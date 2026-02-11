@@ -1,0 +1,4 @@
+release/frontend
+src/declarations
+target/
+.dfx/

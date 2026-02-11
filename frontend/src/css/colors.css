@@ -1,0 +1,7 @@
+.gf-ant-color-secondary {
+    color: var(--ant-color-text-description);
+}
+
+.gf-ant-color-error {
+    color: var(--ant-color-error);
+}

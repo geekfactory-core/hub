@@ -1,0 +1,106 @@
+/**
+==========================================
+Size
+==========================================
+*/
+
+.gf-width-100 {
+    width: 100%;
+}
+
+.gf-height-100 {
+    height: 100%;
+}
+
+/**
+==========================================
+White Space
+==========================================
+*/
+
+.gf-noWrap {
+    white-space: nowrap;
+}
+
+.gf-preWrap {
+    white-space: pre-wrap;
+}
+
+.gf-preLine {
+    white-space: pre-line;
+}
+
+/**
+==========================================
+Padding, Margin
+==========================================
+*/
+
+.gf-no-padding {
+    padding: 0;
+}
+
+/**
+==========================================
+Alignment
+==========================================
+*/
+
+.gf-ta-center {
+    text-align: center;
+}
+
+.gf-tw-balance {
+    text-wrap: balance;
+}
+
+/**
+==========================================
+Font
+==========================================
+*/
+
+.gf-strong {
+    font-weight: var(--ant-font-weight-strong);
+}
+
+.gf-font-size-smaller {
+    font-size: 90%;
+    line-height: calc(var(--ant-line-height) * 0.9);
+}
+
+.gf-font-size-small {
+    font-size: 80%;
+    line-height: calc(var(--ant-line-height) * 0.8);
+}
+
+/**
+==========================================
+Text Decoration
+==========================================
+*/
+
+.gf-underline {
+    text-decoration: underline;
+    text-underline-position: under;
+}
+
+a:hover.gf-underline-hover,
+a:active.gf-underline-hover {
+    text-decoration: underline;
+    text-underline-position: under;
+}
+
+.gf-all-caps {
+    text-transform: uppercase;
+}
+
+/**
+==========================================
+Flex
+==========================================
+*/
+
+.gf-flex-auto {
+    flex: 1;
+}

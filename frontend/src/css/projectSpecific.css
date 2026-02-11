@@ -1,0 +1,10 @@
+/**
+==========================================
+Steps Item Title
+==========================================
+*/
+
+#root .ant-steps-item-title {
+    font-size: var(--ant-font-size);
+    width: 100%;
+}

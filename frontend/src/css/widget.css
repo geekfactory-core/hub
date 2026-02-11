@@ -1,0 +1,48 @@
+/**
+==========================================
+Antd Skeleton
+==========================================
+*/
+
+.gf-skeleton-button {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.gf-skeleton-button .ant-skeleton .ant-skeleton-button {
+    --ant-control-height: 22px;
+    min-width: revert;
+}
+
+.gf-skeleton-button-sm .ant-skeleton .ant-skeleton-button-sm {
+    --ant-control-height-sm: 20px;
+    min-width: revert;
+}
+
+/**
+==========================================
+Rotate animation
+==========================================
+*/
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/**
+==========================================
+Button with multiline text
+==========================================
+*/
+
+.gf-multiline-button {
+    white-space: normal;
+    height: auto;
+    min-height: var(--ant-control-height);
+}

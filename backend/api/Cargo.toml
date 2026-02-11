@@ -1,0 +1,10 @@
+[package]
+name = "hub_canister_api"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+common_canister_types = { workspace = true }
+common_contract_api = { workspace = true }
+candid = { workspace = true }
+serde = { workspace = true }

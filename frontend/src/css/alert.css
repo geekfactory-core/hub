@@ -1,0 +1,28 @@
+/**
+==========================================
+Alert with large icon and message but without description
+==========================================
+*/
+
+.gf-antd-alert-with-action .ant-alert-action {
+    margin-top: var(--ant-margin-xs);
+}
+
+.gf-antd-alert-lg.ant-alert {
+    padding: var(--ant-alert-with-description-padding);
+}
+
+.gf-antd-alert-lg .ant-alert-icon {
+    margin-inline-end: var(--ant-margin-sm);
+    font-size: var(--ant-alert-with-description-icon-size);
+}
+
+.gf-antd-alert-lg .ant-btn-link,
+.gf-antd-alert-lg .ant-alert-message,
+.gf-antd-alert-lg .ant-alert-action a {
+    font-size: var(--ant-font-size-lg);
+}
+
+.gf-antd-alert-lg .ant-alert-message {
+    margin-bottom: 0;
+}

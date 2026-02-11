@@ -1,0 +1,21 @@
+{
+    "canisters": {
+    },
+    "defaults": {
+        "build": {
+            "args": "",
+            "packtool": ""
+        }
+    },
+    "networks": {
+        "local": {
+            "bind": "127.0.0.1:8080",
+            "type": "ephemeral",
+            "replica": {
+                "subnet_type": "system"
+            }
+        }
+    },
+    "dfx": "0.29.1",
+    "version": 1
+}

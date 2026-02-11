@@ -1,0 +1,12 @@
+{
+    "name": "frontend",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "tsc -p tsconfig.prod.json && NODE_ENV=production vite build --mode production",
+        "setup": "npm install",
+        "start": "vite --port 3101",
+        "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+        "test": "vitest run"
+    }
+}

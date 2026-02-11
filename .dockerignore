@@ -1,0 +1,11 @@
+release/
+target/
+node_modules/
+
+.idea/
+*.iml
+.DS_Store
+.vscode/
+
+.dfx/
+.env

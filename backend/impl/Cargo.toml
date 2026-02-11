@@ -1,0 +1,44 @@
+[package]
+name = "hub_canister_impl"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+hub_canister_api = { path = "../api" }
+referral_c2c_client = { workspace = true }
+common_contract_c2c_client = { workspace = true }
+common_canister_api = { workspace = true }
+common_canister_impl = { workspace = true }
+common_canister_types = { workspace = true }
+common_contract_api = { workspace = true }
+common_certification = { workspace = true }
+candid = { workspace = true }
+serde = { workspace = true }
+serde_bytes = { workspace = true }
+ic-cdk = { workspace = true }
+ic-cdk-macros = { workspace = true }
+ic-stable-structures = { workspace = true }
+ic-canister-sig-creation = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+ic-ledger-types = { workspace = true }
+icrc-ledger-types = { workspace = true }
+async-trait = { workspace = true }
+include_dir = { workspace = true }
+ic-http-certification = { workspace = true }
+ic-asset-certification = { workspace = true }
+regex = { workspace = true }
+num-bigint = { workspace = true }
+num-traits = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(network, values("local", "test"))'] }

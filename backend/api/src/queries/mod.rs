@@ -1,0 +1,10 @@
+pub mod get_access_rights;
+pub mod get_config;
+pub mod get_contract_activation_code;
+pub mod get_contract_template;
+pub mod get_contract_templates;
+pub mod get_deployment;
+pub mod get_deployment_events;
+pub mod get_deployments;
+pub mod get_hub_events;
+pub mod obtain_contract_certificate;

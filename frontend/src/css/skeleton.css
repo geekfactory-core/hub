@@ -1,0 +1,89 @@
+:root {
+    --gf-main-bg-color: #f2f2f6;
+    --gf-dark-bg-color: #000000;
+    --gf-ant-color-bg-container: #141414; /* Dark mode container background color by Ant Design */
+
+    --gf-site-max-width: 750px;
+    --gf-site-min-width: 270px;
+
+    --gf-skeleton-content-padding-vertical: 16px;
+    --gf-skeleton-content-padding-horizontal: 16px;
+}
+
+html,
+body,
+#root,
+.antdAppComponent {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    background-color: var(--gf-main-bg-color);
+}
+
+body.gf-dark {
+    background-color: var(--gf-dark-bg-color);
+}
+
+html.gf-dark {
+    scrollbar-color: gray #373737;
+}
+
+/**
+==========================================
+Skeleton
+==========================================
+*/
+
+.antdAppComponent {
+    word-break: break-word;
+}
+
+/**
+==========================================
+Main Stack
+==========================================
+*/
+
+.skStack {
+    min-width: var(--gf-site-min-width);
+    max-width: var(--gf-site-max-width);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+    padding: 0 var(--gf-skeleton-content-padding-horizontal);
+}
+
+/**
+==========================================
+Toolbar
+==========================================
+*/
+
+.skToolbarRow {
+    padding: var(--gf-skeleton-content-padding-vertical) 0;
+}
+
+/**
+==========================================
+Content
+==========================================
+*/
+
+.skContentRow {
+    flex-grow: 1;
+    padding-top: var(--gf-skeleton-content-padding-vertical);
+}
+
+/**
+==========================================
+Footer
+==========================================
+*/
+
+.skFooterRow {
+    text-align: center;
+    padding: var(--gf-skeleton-content-padding-vertical) 0;
+}

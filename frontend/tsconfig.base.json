@@ -1,0 +1,43 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+        "strict": true,
+
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+
+        // Modern correctness flags
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "verbatimModuleSyntax": true,
+
+        // Vite recommended
+        "allowImportingTsExtensions": true,
+        "useDefineForClassFields": true,
+        "skipLibCheck": true,
+
+        // Source maps (disabled; handled by Vite)
+        "sourceMap": false,
+        "inlineSources": false,
+
+        "lib": ["DOM", "DOM.Iterable", "ESNext"],
+        "baseUrl": "..",
+
+        "paths": {
+            "@dfinity/ledger-icrc/dist/*": ["node_modules/@dfinity/ledger-icrc/dist/*"],
+            "@dfinity/agent/lib/esm/*": ["node_modules/@dfinity/agent/lib/esm/*"]
+        }
+    },
+    "include": ["./src/**/*", "./../src/declarations/**/*"],
+    "exclude": ["./src/**/*.spec.ts"]
+}

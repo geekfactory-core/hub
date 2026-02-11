@@ -1,0 +1,60 @@
+[workspace]
+resolver = "1"
+members = [
+    "backend/api",
+    "backend/candid",
+    "backend/impl",
+    "backend/assets",
+]
+
+[workspace.dependencies]
+common_canister_types = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+referral_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_contract_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_canister_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_canister_impl = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_contract_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_certification = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_embed_assets = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+candid = "0.10.20"
+serde = "1.0.228"
+serde_cbor = "0.11.2"
+serde_bytes = "0.11.19"
+serde_repr = "0.1.20"
+sha2 = "0.10.9"
+ciborium = "0.2.2"
+rmp-serde = "1.3.1"
+ic-cdk = "0.19.0"
+ic-cdk-macros = "0.19.0"
+ic-stable-structures = "0.7.2"
+ic-ledger-types = "0.16.0"
+ic-cdk-timers = "1.0.0"
+icrc-ledger-types = "0.1.12"
+ic-certification = "3.0.3"
+ic-representation-independent-hash = "3.0.3"
+ic-verify-bls-signature = "0.6.0"
+ic-signature-verification = "0.2.0"
+ic-canister-sig-creation = "1.3.1"
+ic-asset-certification = "3.0.3"
+ic-http-certification = "3.0.3"
+async-trait = "0.1.89"
+hex = "0.4.3"
+thiserror = "2.0.17"
+leb128 = "0.2.5"
+der = { version = "0.7.10", features = ["oid", "alloc"] }
+futures = "0.3.31"
+include_dir = { version = "0.7.4", features = ["glob"] }
+globset = "0.4.18"
+lazy_static = "1.5.0"
+flate2 = "1.1.5"
+brotli = "8.0.2"
+icgeek_candid_gen = "0.1.2"
+secp256k1 = { version = "0.31.1" }
+regex = "1.12.2"
+num-bigint = "0.4.6"
+num-traits = "0.2.19"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1

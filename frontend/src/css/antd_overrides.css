@@ -1,0 +1,169 @@
+/**
+==========================================
+List
+==========================================
+*/
+
+#root .ant-list {
+    --ant-list-item-padding-sm: 12px 0;
+}
+
+.ant-list .ant-list-pagination {
+    /**
+    * remove top margin in list pagination to add inside
+    */
+    margin-block-start: 0;
+}
+
+#root .ant-list .ant-list-item:last-child {
+    /**
+    remove bottom border in last row
+    */
+    border-block-end: 0;
+}
+
+/**
+==========================================
+Modal
+==========================================
+*/
+
+.ant-modal-confirm-content {
+    overflow-x: auto;
+}
+
+.ant-modal-root .ant-modal-confirm-paragraph {
+    max-width: 100%;
+}
+
+.ant-modal-footer,
+.ant-modal-confirm-btns {
+    display: flex;
+}
+
+body.gf-dark .ant-modal-mask {
+    background-color: rgba(0, 0, 0, 0.85);
+}
+
+/**
+==========================================
+Typography
+==========================================
+*/
+
+div.ant-typography:last-child {
+    margin-bottom: 0;
+}
+
+#root .ant-typography .ant-typography-copy {
+    display: inline-block !important;
+}
+
+/**
+==========================================
+Pagination
+==========================================
+*/
+
+.ant-pagination.ant-pagination-mini .ant-pagination-item {
+    white-space: nowrap;
+}
+
+.ant-list-pagination .ant-pagination {
+    /**
+    * remove top margin in list pagination
+    */
+    margin-block-start: var(--ant-margin-lg);
+}
+
+/**
+==========================================
+Table
+==========================================
+*/
+
+.ant-table-empty .ant-table-placeholder .ant-table-cell {
+    /**
+    remove bottom border in empty table
+    */
+    border-bottom: 0;
+}
+
+.ant-table .ant-table-row:last-child .ant-table-cell {
+    /**
+    remove bottom border in last row
+    */
+    border-bottom: 0;
+}
+
+/**
+==========================================
+Tag
+==========================================
+*/
+#root .ant-tag {
+    margin-inline-end: 0;
+}
+
+/**
+==========================================
+Alert
+==========================================
+*/
+
+.ant-alert {
+    flex-direction: column;
+    align-items: start;
+}
+
+.ant-alert-content {
+    width: 100%;
+}
+
+.ant-alert-error .ant-alert-message {
+    color: var(--ant-color-error-text);
+}
+
+.ant-alert-action {
+    width: 100%;
+    margin-inline-start: 0;
+}
+
+/**
+==========================================
+Steps
+==========================================
+*/
+
+.ant-steps-vertical .ant-steps-item {
+    padding-bottom: 5px;
+}
+
+/**
+==========================================
+Form
+==========================================
+*/
+
+.ant-checkbox-wrapper-disabled a {
+    color: var(--ant-color-text-disabled);
+}
+
+/**
+==========================================
+Input
+==========================================
+*/
+
+.ant-input-affix-wrapper .ant-input-suffix {
+    margin-inline-start: var(--ant-padding-xs);
+}
+
+/**
+==========================================
+Button
+==========================================
+*/
+.ant-btn-icon-only {
+    flex-shrink: 0;
+}

@@ -1,0 +1,28 @@
+# Various IDEs and Editors
+.vscode/*
+!.vscode/settings.json
+.idea/
+.zed/
+**/*~
+*.iml
+*.wasm
+*.wasm.gz
+
+# Mac OSX temporary files
+.DS_Store
+**/.DS_Store
+
+# dfx temporary files
+.dfx/
+.env
+
+# rust
+/target/
+/release/
+
+# frontend code
+node_modules/
+dist/
+
+# dfinity snapshot files
+snapshot/
