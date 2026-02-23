@@ -26,3 +26,8 @@ dist/
 
 # dfinity snapshot files
 snapshot/
+
+# AI instructions
+dev/
+.github/
+.claude/

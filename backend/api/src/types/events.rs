@@ -19,6 +19,10 @@ pub enum HubEventType {
     ContractTemplateBlocked {
         contract_template_id: ContractTemplateId,
     },
+    ContractTemplateRetired {
+        contract_template_id: ContractTemplateId,
+        retired: bool,
+    },
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]

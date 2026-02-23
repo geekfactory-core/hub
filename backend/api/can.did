@@ -127,6 +127,7 @@ type ContractTemplateInformation = record {
   definition : ContractTemplateDefinition;
   contract_template_id : nat64;
   registered : nat64;
+  retired : opt Timestamped;
 };
 type ContractTemplatesFilter = record { blocked : opt bool; filter : opt text };
 type ContractTemplatesSortingKey = variant {
@@ -162,6 +163,7 @@ type DeployContractArgs = record {
 type DeployContractError = variant {
   GetIcpXdrConversionRateError : record { reason : text };
   InsufficientApprovedAccountAllowance;
+  ContractTemplateRetired;
   ActiveDeploymentExists : ProcessDeploymentResult;
   DeploymentUnavailable;
   ContractTemplateNotFound;
@@ -420,6 +422,10 @@ type HubEvent = record {
   caller : principal;
 };
 type HubEventType = variant {
+  ContractTemplateRetired : record {
+    contract_template_id : nat64;
+    retired : bool;
+  };
   ConfigSet : GetConfigResult;
   ContractTemplateBlocked : GetContractTemplateArgs;
   AccessRightsSet : GetAccessRightsResult;
@@ -486,6 +492,7 @@ type ObtainContractCertificateResult = record {
 };
 type Permission = variant {
   AddContractTemplate;
+  RetireContractTemplate;
   BlockContractTemplate;
   SetAccessRights;
   SetConfig;

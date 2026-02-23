@@ -10,8 +10,9 @@ use hub_canister_api::{
     obtain_contract_certificate::ObtainContractCertificateError,
     process_deployment::ProcessDeploymentError,
     types::{
-        Config, CreateContractCanisterStrategy, CyclesConvertingStrategy, DeploymentId,
-        DeploymentResult, DeploymentState, FinalizeDeploymentState, IcpXdrConversionRateStrategy,
+        AccessRight, Config, CreateContractCanisterStrategy, CyclesConvertingStrategy,
+        DeploymentId, DeploymentResult, DeploymentState, FinalizeDeploymentState,
+        IcpXdrConversionRateStrategy, Permission,
     },
 };
 use ic_ledger_types::{AccountIdentifier, DEFAULT_SUBACCOUNT};
@@ -45,7 +46,9 @@ use crate::{
     updates::{
         cancel_deployment::cancel_deployment_int, deploy_contract::deploy_contract_int,
         initialize_contract_certificate::initialize_contract_certificate_int,
-        process_deployment::process_deployment_int, set_config::set_config_int,
+        process_deployment::process_deployment_int, set_access_rights::set_access_rights_int,
+        set_config::set_config_int,
+        set_contract_template_retired::set_contract_template_retired_int,
     },
 };
 
@@ -1255,6 +1258,66 @@ async fn test_deploy_contract_with_before_buffer() {
     assert_eq!(
         ht_get_account_balance(approved_account_hex),
         buffer_amount - 3
+    );
+}
+
+#[tokio::test]
+async fn test_deploy_contract_template_retired() {
+    let admin = ht_get_test_admin();
+    let contract_def = ht_get_face_contract_def();
+
+    let contract_template_id =
+        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(contract_template_id, 0);
+
+    let approved_account = LedgerAccount::Account {
+        owner: ht_get_test_user(),
+        subaccount: None,
+    };
+
+    // Enable deployment and grant RetireContractTemplate permission
+    ht_set_test_caller(admin);
+    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
+    let config = Config {
+        is_deployment_available: true,
+        ..config.clone()
+    };
+    assert!(set_config_int(config).is_ok());
+
+    let result = set_access_rights_int(vec![AccessRight {
+        caller: admin,
+        permissions: Some(vec![
+            Permission::SetAccessRights,
+            Permission::RetireContractTemplate,
+        ]),
+        description: None,
+    }]);
+    assert!(result.is_ok());
+
+    // Retire the template
+    let result = set_contract_template_retired_int(
+        contract_template_id,
+        Some("no longer supported".to_string()),
+    );
+    assert!(result.is_ok());
+
+    // Deploy must fail with ContractTemplateRetired
+    let deployer = ht_get_test_user();
+    ht_set_test_caller(deployer);
+    let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
+    ht_result_err_matches!(result, DeployContractError::ContractTemplateRetired);
+
+    // Unretire the template
+    ht_set_test_caller(admin);
+    let result = set_contract_template_retired_int(contract_template_id, None);
+    assert!(result.is_ok());
+
+    // After unretire — deploy proceeds past the template check (fails on balance, not on template)
+    ht_set_test_caller(deployer);
+    let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
+    ht_result_err_matches!(
+        result,
+        DeployContractError::InsufficientApprovedAccountBalance
     );
 }
 

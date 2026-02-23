@@ -3,6 +3,7 @@ use common_contract_api::{get_wasm_hash, ContractTemplateId};
 use hub_canister_api::{
     add_contract_template::{AddContractTemplateError, AddContractTemplateResult},
     block_contract_template::BlockContractTemplateError,
+    set_contract_template_retired::SetContractTemplateRetiredError,
     set_upload_wasm_grant::SetUploadWasmGrantError,
     types::{
         AccessRight, CanisterSettings, Config, ContractTemplateDefinition, HubEventType,
@@ -23,6 +24,7 @@ use crate::{
         add_contract_template::add_contract_template_int,
         block_contract_template::block_contract_template_int,
         set_access_rights::set_access_rights_int, set_config::set_config_int,
+        set_contract_template_retired::set_contract_template_retired_int,
         set_upload_wasm_grant::set_upload_wasm_grant_int, upload_wasm_chunk::upload_wasm_chunk_int,
     },
 };
@@ -279,5 +281,68 @@ fn test_block_contract() {
     assert!(contract.contract_template.blocked.is_some());
 
     ht_last_hub_event_matches!(HubEventType::ContractTemplateBlocked { contract_template_id: event_contract_id }
+        if event_contract_id == &contract_template_id);
+}
+
+#[test]
+fn test_retire_contract() {
+    let admin = ht_get_test_admin();
+    let contract_def = ht_get_face_contract_def();
+
+    let contract_template_id =
+        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(contract_template_id, 0);
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    assert!(contract.contract_template.retired.is_none());
+
+    // CHECK PERMISSION DENIED
+    let result = set_contract_template_retired_int(
+        contract_template_id,
+        Some("no longer supported".to_string()),
+    );
+    ht_result_err_matches!(result, SetContractTemplateRetiredError::PermissionDenied);
+
+    let result = set_access_rights_int(vec![AccessRight {
+        caller: admin,
+        permissions: Some(vec![
+            Permission::SetAccessRights,
+            Permission::RetireContractTemplate,
+        ]),
+        description: None,
+    }]);
+    assert!(result.is_ok());
+
+    // CHECK CONTRACT NOT FOUND
+    let result = set_contract_template_retired_int(
+        contract_template_id + 1,
+        Some("no longer supported".to_string()),
+    );
+    ht_result_err_matches!(
+        result,
+        SetContractTemplateRetiredError::ContractTemplateNotFound
+    );
+
+    // RETIRE CONTRACT SUCCESS
+    let reason = "no longer supported".to_string();
+    let result = set_contract_template_retired_int(contract_template_id, Some(reason.clone()));
+    assert!(result.is_ok());
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    let retired = contract.contract_template.retired.as_ref();
+    assert!(retired.is_some());
+    assert_eq!(retired.unwrap().value, reason);
+
+    ht_last_hub_event_matches!(HubEventType::ContractTemplateRetired { contract_template_id: event_contract_id, retired: true }
+        if event_contract_id == &contract_template_id);
+
+    // UNRETIRE CONTRACT SUCCESS
+    let result = set_contract_template_retired_int(contract_template_id, None);
+    assert!(result.is_ok());
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    assert!(contract.contract_template.retired.is_none());
+
+    ht_last_hub_event_matches!(HubEventType::ContractTemplateRetired { contract_template_id: event_contract_id, retired: false }
         if event_contract_id == &contract_template_id);
 }

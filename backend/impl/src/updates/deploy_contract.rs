@@ -75,6 +75,10 @@ pub(crate) async fn deploy_contract_int(
             return Err(DeployContractError::ContractTemplateBlocked);
         }
 
+        if contract.retired.is_some() {
+            return Err(DeployContractError::ContractTemplateRetired);
+        }
+
         Ok((
             config.deployment_cycles_cost,
             config.deployment_expenses_amount_buffer_permyriad,

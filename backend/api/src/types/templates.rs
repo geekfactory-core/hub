@@ -10,6 +10,7 @@ pub struct ContractTemplateInformation {
     pub registered: TimestampMillis,
     pub definition: ContractTemplateDefinition,
     pub blocked: Option<Timestamped<String>>,
+    pub retired: Option<Timestamped<String>>,
     pub deployments_count: usize,
 }
 
