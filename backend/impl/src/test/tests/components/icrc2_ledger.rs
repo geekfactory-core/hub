@@ -23,6 +23,10 @@ thread_local! {
     static __TABLE: RefCell<BTreeMap<String, (TimestampNanos, TokenE8s)>> = RefCell::default();
 }
 
+pub(crate) fn ht_reset_icrc2() {
+    __TABLE.with(|t| t.borrow_mut().clear());
+}
+
 pub(crate) fn ht_approve_account(account: String, expires_at: TimestampMillis, tokens: TokenE8s) {
     __TABLE.with(|table| {
         let mut t = table.borrow_mut();
@@ -50,7 +54,7 @@ pub(crate) fn ht_get_account_allowance(account: Account) -> Allowance {
     })
 }
 
-pub struct ICRC2LedgerTest {}
+pub(crate) struct ICRC2LedgerTest {}
 
 #[async_trait]
 impl ICRC2Ledger for ICRC2LedgerTest {

@@ -1,6 +1,6 @@
 use common_canister_impl::components::logger::Logger;
 
-pub struct PrintLoggerImpl;
+pub(crate) struct PrintLoggerImpl;
 
 impl Logger for PrintLoggerImpl {
     fn debug(&self, message: &str) {

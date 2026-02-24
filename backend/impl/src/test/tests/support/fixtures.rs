@@ -1,34 +1,24 @@
-#![allow(dead_code)]
-
 use hub_canister_api::types::{CanisterSettings, ContractTemplateDefinition};
 
 /// Default WASM bytes used in tests (10 bytes).
-pub const TEST_WASM: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+pub(crate) const TEST_WASM: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /// Initial cycles provisioned to each deployed contract canister in tests.
-pub const TEST_CONTRACT_INITIAL_CYCLES: u128 = 9_000_000_000;
+pub(crate) const TEST_CONTRACT_INITIAL_CYCLES: u128 = 9_000_000_000;
 
 /// XDR permyriad per ICP used in deployment tests (20_000 = 2.0 XDR/ICP).
-pub const TEST_XDR_PERMYRIAD_PER_ICP: u64 = 20_000;
+pub(crate) const TEST_XDR_PERMYRIAD_PER_ICP: u64 = 20_000;
 
 /// Deployment cycles cost used in tests.
-pub const TEST_DEPLOYMENT_CYCLES_COST: u128 = 1_000_000_000;
+pub(crate) const TEST_DEPLOYMENT_CYCLES_COST: u128 = 1_000_000_000;
 
 /// Allowance expiration timeout (ms) used in tests.
-pub const TEST_DEPLOYMENT_ALLOWANCE_EXPIRATION_TIMEOUT: u64 = 60_000;
-
-/// Minimum ICP e8s required to cover a deployment at the standard test rates,
-/// without any buffer:
-///   (TEST_CONTRACT_INITIAL_CYCLES + TEST_DEPLOYMENT_CYCLES_COST) / TEST_XDR_PERMYRIAD_PER_ICP
-pub fn test_deployment_expenses_amount() -> u64 {
-    ((TEST_CONTRACT_INITIAL_CYCLES + TEST_DEPLOYMENT_CYCLES_COST)
-        / TEST_XDR_PERMYRIAD_PER_ICP as u128) as u64
-}
+pub(crate) const TEST_DEPLOYMENT_ALLOWANCE_EXPIRATION_TIMEOUT: u64 = 60_000;
 
 /// Returns a minimal valid [`ContractTemplateDefinition`] for use in tests.
 /// The `wasm_hash` field is intentionally left empty — callers that need a
 /// real hash should override it after calling this function.
-pub fn ht_get_face_contract_def() -> ContractTemplateDefinition {
+pub(crate) fn ht_get_face_contract_def() -> ContractTemplateDefinition {
     ContractTemplateDefinition {
         name: "name".to_string(),
         wasm_hash: "".to_string(),

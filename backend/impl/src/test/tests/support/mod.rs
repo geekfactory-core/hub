@@ -1,1 +1,1 @@
-pub mod fixtures;
+pub(crate) mod fixtures;

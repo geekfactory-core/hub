@@ -1,2 +1,2 @@
-pub mod contract;
-pub mod deployment;
+pub(crate) mod contract;
+pub(crate) mod deployment;

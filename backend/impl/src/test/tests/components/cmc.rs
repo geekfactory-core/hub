@@ -6,7 +6,7 @@ use common_canister_impl::components::cmc::api::{
 use common_canister_impl::components::cmc::interface::{CallWrapperError, Cmc};
 use ic_ledger_types::BlockIndex;
 
-pub struct CmcTest {}
+pub(crate) struct CmcTest {}
 
 #[async_trait]
 impl Cmc for CmcTest {

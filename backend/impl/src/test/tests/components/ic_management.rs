@@ -18,7 +18,11 @@ thread_local! {
     static __TEST_CHUNKS: RefCell<Vec<ChunkHash>> = RefCell::default();
 }
 
-pub struct IcManagementTest {}
+pub(crate) fn ht_reset_ic_chunks() {
+    __TEST_CHUNKS.with(|t| t.borrow_mut().clear());
+}
+
+pub(crate) struct IcManagementTest {}
 
 #[async_trait]
 impl IcManagement for IcManagementTest {

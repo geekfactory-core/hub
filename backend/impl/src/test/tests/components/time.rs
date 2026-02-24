@@ -9,13 +9,19 @@ thread_local! {
     static __TIME: RefCell<Option<TimestampMillis>> = RefCell::default();
 }
 
-pub fn ht_set_test_time(now: TimestampMillis) {
+pub(crate) fn ht_reset_time() {
+    __TIME.with(|time| {
+        *time.borrow_mut() = None;
+    });
+}
+
+pub(crate) fn ht_set_test_time(now: TimestampMillis) {
     __TIME.with(|time| {
         *time.borrow_mut() = Some(now);
     });
 }
 
-pub struct TimeTest;
+pub(crate) struct TimeTest;
 
 impl Time for TimeTest {
     fn get_current_unix_epoch_time_nanos(&self) -> TimestampNanos {

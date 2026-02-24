@@ -2,10 +2,7 @@ use crate::{
     get_env,
     handlers::wallet::get_deployment_transit_canister_sub_account,
     ht_deployment_state_matches, ht_result_err_matches,
-    queries::{
-        get_contract_activation_code::get_contract_activation_code_int,
-        get_deployment::get_deployment_int,
-    },
+    queries::get_deployment::get_deployment_int,
     read_state,
     test::tests::{
         components::{
@@ -17,10 +14,12 @@ use crate::{
         drivers::{
             contract::ht_add_contract,
             deployment::{
-                get_deployment_lock_expiration, ht_assert_certificate_errors_and_initialize,
-                ht_assert_deploying_result, ht_assert_process_deployment_errors,
-                ht_calc_expenses_amount, ht_calc_expenses_amount_buffered, ht_drive_to_deploying,
-                ht_fund_deployer_account, ht_setup_deployment_config, DeploymentConfig,
+                get_deployment_lock_expiration, ht_assert_activation_code_errors,
+                ht_assert_certificate_errors_and_initialize, ht_assert_deploying_result,
+                ht_assert_process_deployment_errors, ht_calc_expenses_amount,
+                ht_calc_expenses_amount_buffered, ht_drive_to_deploying,
+                ht_drive_upload_to_start_finalization, ht_fund_deployer_account,
+                ht_setup_deployment_config, DeploymentConfig,
             },
         },
         ht_get_test_admin, ht_get_test_user,
@@ -30,6 +29,7 @@ use crate::{
         },
     },
     updates::{
+        block_contract_template::block_contract_template_int,
         cancel_deployment::cancel_deployment_int, deploy_contract::deploy_contract_int,
         process_deployment::process_deployment_int, set_access_rights::set_access_rights_int,
         set_contract_template_retired::set_contract_template_retired_int,
@@ -40,7 +40,6 @@ use common_canister_types::LedgerAccount;
 use hub_canister_api::{
     cancel_deployment::CancelDeploymentError,
     deploy_contract::DeployContractError,
-    get_contract_activation_code::GetContractActivationCodeError,
     get_deployment::{DeploymentFilter, GetDeploymentError, GetDeploymentResult},
     types::{
         AccessRight, CreateContractCanisterStrategy, CyclesConvertingStrategy, DeploymentResult,
@@ -345,20 +344,7 @@ async fn test_deploy_contract_with_cmc() {
 
     let env = get_env();
 
-    // CHECK GET ACTIVATION CODE PERMISSION DENIED
-    ht_set_test_caller(ht_get_test_admin());
-    let result = get_contract_activation_code_int(deployment_id);
-    ht_result_err_matches!(result, GetContractActivationCodeError::PermissionDenied);
-
-    // CHECK GET ACTIVATION CODE DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = get_contract_activation_code_int(deployment_id + 1);
-    ht_result_err_matches!(result, GetContractActivationCodeError::DeploymentNotFound);
-
-    // CHECK GET ACTIVATION CODE
-    ht_set_test_caller(deployer);
-    let result = get_contract_activation_code_int(deployment_id);
-    assert!(result.is_ok());
+    ht_assert_activation_code_errors(admin, deployer, &deployment_id);
 
     ht_assert_process_deployment_errors(ht_get_test_admin(), deployer, &deployment_id).await;
 
@@ -424,8 +410,8 @@ async fn test_deploy_contract_with_cmc() {
 
     // GET ACTIVE DEPLOYMENT INFORMATION (checked before certificate errors to verify state)
     let result = get_deployment_int(DeploymentFilter::Active { deployer }).unwrap();
-    matches!(result, GetDeploymentResult { deployment }
-        if deployment.deployment_id == deployment_id);
+    assert!(matches!(result, GetDeploymentResult { deployment }
+        if deployment.deployment_id == deployment_id));
 
     // Assert certificate errors and perform the happy-path initialize (advances to UploadContractWasm)
     let certificate =
@@ -442,65 +428,7 @@ async fn test_deploy_contract_with_cmc() {
         }
      if install_certificate == &certificate && uploaded_chunk_hashes.is_empty() && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
 
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 1 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 2 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 3 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::InstallContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-        }
-    if install_certificate == &certificate  && uploaded_chunk_hashes.len() == 3 );
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(&deployment_id, DeploymentState::MakeContractSelfControlled);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::FinalizeDeployment {
-            result: DeploymentResult::Success,
-            sub_state: FinalizeDeploymentState::StartDeploymentFinalization
-        }
-    );
+    ht_drive_upload_to_start_finalization(deployer, &deployment_id).await;
 
     let result = process_deployment_int(deployment_id).await;
     assert!(result.is_ok());
@@ -574,20 +502,7 @@ async fn test_deploy_contract_without_cmc() {
 
     let env = get_env();
 
-    // CHECK GET ACTIVATION CODE PERMISSION DENIED
-    ht_set_test_caller(ht_get_test_admin());
-    let result = get_contract_activation_code_int(deployment_id);
-    ht_result_err_matches!(result, GetContractActivationCodeError::PermissionDenied);
-
-    // CHECK GET ACTIVATION CODE DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = get_contract_activation_code_int(deployment_id + 1);
-    ht_result_err_matches!(result, GetContractActivationCodeError::DeploymentNotFound);
-
-    // CHECK GET ACTIVATION CODE
-    ht_set_test_caller(deployer);
-    let result = get_contract_activation_code_int(deployment_id);
-    assert!(result.is_ok());
+    ht_assert_activation_code_errors(admin, deployer, &deployment_id);
 
     ht_assert_process_deployment_errors(ht_get_test_admin(), deployer, &deployment_id).await;
 
@@ -625,8 +540,8 @@ async fn test_deploy_contract_without_cmc() {
 
     // GET ACTIVE DEPLOYMENT INFORMATION (checked before certificate errors to verify state)
     let result = get_deployment_int(DeploymentFilter::Active { deployer }).unwrap();
-    matches!(result, GetDeploymentResult { deployment }
-        if deployment.deployment_id == deployment_id);
+    assert!(matches!(result, GetDeploymentResult { deployment }
+        if deployment.deployment_id == deployment_id));
 
     // Assert certificate errors and perform the happy-path initialize (advances to UploadContractWasm)
     let certificate =
@@ -642,65 +557,7 @@ async fn test_deploy_contract_without_cmc() {
         }
      if install_certificate == &certificate && uploaded_chunk_hashes.is_empty() && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
 
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 1 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 2 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::UploadContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-            upload_chunk_size,
-            upload_chunk_count
-        }
-     if install_certificate == &certificate && uploaded_chunk_hashes.len() == 3 && upload_chunk_size == &contract_wasm_upload_chunk_size && upload_chunk_count == &contract_wasm_upload_chunk_count);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::InstallContractWasm {
-            certificate: install_certificate,
-            uploaded_chunk_hashes,
-        }
-    if install_certificate == &certificate  && uploaded_chunk_hashes.len() == 3 );
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(&deployment_id, DeploymentState::MakeContractSelfControlled);
-
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::FinalizeDeployment {
-            result: DeploymentResult::Success,
-            sub_state: FinalizeDeploymentState::StartDeploymentFinalization
-        }
-    );
+    ht_drive_upload_to_start_finalization(deployer, &deployment_id).await;
 
     assert_eq!(
         env.get_ledger()
@@ -918,4 +775,102 @@ async fn test_deploy_contract_template_retired() {
         result,
         DeployContractError::InsufficientApprovedAccountBalance
     );
+}
+
+#[tokio::test]
+async fn test_deploy_blocked_contract_template() {
+    let admin = ht_get_test_admin();
+    let contract_def = ht_get_face_contract_def();
+
+    let contract_template_id = ht_add_contract(admin, contract_def, TEST_WASM.to_vec());
+    assert_eq!(contract_template_id, 0);
+
+    let approved_account = LedgerAccount::Account {
+        owner: ht_get_test_user(),
+        subaccount: None,
+    };
+
+    // Enable deployment
+    ht_setup_deployment_config(admin, &DeploymentConfig::default());
+
+    // Grant BlockContractTemplate permission to the admin
+    ht_set_test_caller(admin);
+    let result = set_access_rights_int(vec![AccessRight {
+        caller: admin,
+        permissions: Some(vec![
+            Permission::SetAccessRights,
+            Permission::SetConfig,
+            Permission::BlockContractTemplate,
+        ]),
+        description: None,
+    }]);
+    assert!(result.is_ok());
+
+    // Block the template
+    let result =
+        block_contract_template_int(contract_template_id, "no longer supported".to_string());
+    assert!(result.is_ok());
+
+    // Deploy must fail with ContractTemplateBlocked
+    let deployer = ht_get_test_user();
+    ht_set_test_caller(deployer);
+    let result = deploy_contract_int(approved_account, contract_template_id, None).await;
+    ht_result_err_matches!(result, DeployContractError::ContractTemplateBlocked);
+}
+
+#[tokio::test]
+async fn test_process_deployment_locked() {
+    let admin = ht_get_test_admin();
+    let deployer = ht_get_test_user();
+
+    let contract_template_id =
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
+
+    // ht_drive_to_deploying sets time=0 and funds the deployer account.
+    let dr = ht_drive_to_deploying(
+        admin,
+        deployer,
+        contract_template_id,
+        &DeploymentConfig::default(),
+        TEST_CONTRACT_INITIAL_CYCLES,
+        None,
+    )
+    .await;
+    let deployment_id = dr.deployment_id;
+
+    // The deployment was just created — it carries an initial processing lock
+    // (verified by cancel_deployment_int returning DeploymentLocked at time=0).
+    // Calling process_deployment_int while the lock is still active must:
+    // - succeed (no error — ProcessDeploymentError has no DeploymentLocked variant)
+    // - NOT advance the state
+    ht_set_test_caller(deployer);
+    let result = process_deployment_int(deployment_id).await;
+    assert!(result.is_ok());
+    ht_deployment_state_matches!(
+        &deployment_id,
+        DeploymentState::TransferDeployerFundsToTransitAccount
+    );
+
+    // Once the lock expires, the same call advances the state normally.
+    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
+    let result = process_deployment_int(deployment_id).await;
+    assert!(result.is_ok());
+    ht_deployment_state_matches!(&deployment_id, DeploymentState::TransferTopUpFundsToCMC);
+}
+
+#[tokio::test]
+async fn test_get_deployment_not_found() {
+    let admin = ht_get_test_admin();
+
+    // Initialise the hub with a contract template but create no deployments.
+    ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
+
+    // Query by non-existent deployment id
+    let result = get_deployment_int(DeploymentFilter::ByDeploymentId { deployment_id: 0 });
+    ht_result_err_matches!(result, GetDeploymentError::DeploymentNotFound);
+
+    // Query for active deployment when none exists
+    let deployer = ht_get_test_user();
+    let result = get_deployment_int(DeploymentFilter::Active { deployer });
+    ht_result_err_matches!(result, GetDeploymentError::DeploymentNotFound);
 }

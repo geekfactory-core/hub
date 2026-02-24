@@ -4,7 +4,7 @@ use common_contract_api::SignedContractCertificate;
 use ic_canister_sig_creation::signature_map::CanisterSigError;
 use sha2::{Digest, Sha256};
 
-pub struct CertificationTest;
+pub(crate) struct CertificationTest;
 
 impl Certification for CertificationTest {
     fn add_contract_signature_to_signature_map(

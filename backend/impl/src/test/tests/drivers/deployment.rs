@@ -5,16 +5,18 @@ use common_canister_impl::components::ledger::to_account_identifier;
 use common_canister_types::{LedgerAccount, TimestampMillis};
 use common_contract_api::ContractTemplateId;
 use hub_canister_api::types::{
-    AccessRight, Config, CreateContractCanisterStrategy, CyclesConvertingStrategy, DeploymentId,
+    Config, CreateContractCanisterStrategy, CyclesConvertingStrategy, DeploymentId,
     DeploymentInformation, DeploymentResult, FinalizeDeploymentState, IcpXdrConversionRateStrategy,
-    Permission,
 };
 use ic_ledger_types::{AccountIdentifier, DEFAULT_SUBACCOUNT};
 
 use crate::{
     handlers::deployments::expenses_calculator::DeploymentExpensesCalculator,
     ht_deployment_state_matches, ht_result_err_matches,
-    queries::obtain_contract_certificate::obtain_contract_certificate_int,
+    queries::{
+        get_contract_activation_code::get_contract_activation_code_int,
+        obtain_contract_certificate::obtain_contract_certificate_int,
+    },
     read_state,
     test::tests::{
         components::{
@@ -29,13 +31,13 @@ use crate::{
     updates::{
         deploy_contract::deploy_contract_int,
         initialize_contract_certificate::initialize_contract_certificate_int,
-        process_deployment::process_deployment_int, set_access_rights::set_access_rights_int,
-        set_config::set_config_int,
+        process_deployment::process_deployment_int, set_config::set_config_int,
     },
 };
 use common_contract_api::SignedContractCertificate;
 use hub_canister_api::types::{DeploymentExpenses, DeploymentState, IcpConversationRate};
 use hub_canister_api::{
+    get_contract_activation_code::GetContractActivationCodeError,
     initialize_contract_certificate::InitializeContractCertificateError,
     obtain_contract_certificate::ObtainContractCertificateError,
     process_deployment::ProcessDeploymentError,
@@ -106,8 +108,7 @@ pub(crate) struct DeployingResult {
 
 /// Applies `deployment_cfg` to the Hub config and enables deployments.
 ///
-/// Caller **must** already have `SetConfig` permission; use
-/// [`ht_setup_deployment_config_with_access`] if you also need to set it.
+/// Caller **must** already have `SetConfig` permission.
 pub(crate) fn ht_setup_deployment_config(admin: Principal, deployment_cfg: &DeploymentConfig) {
     ht_set_test_caller(admin);
     let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
@@ -137,30 +138,6 @@ pub(crate) fn ht_setup_deployment_config(admin: Principal, deployment_cfg: &Depl
         set_config_int(config).is_ok(),
         "ht_setup_deployment_config: set_config_int failed"
     );
-}
-
-/// Like [`ht_setup_deployment_config`], but also grants the admin
-/// `SetConfig` permission first (in addition to any permissions already set).
-pub(crate) fn ht_setup_deployment_config_with_access(
-    admin: Principal,
-    deployment_cfg: &DeploymentConfig,
-) {
-    ht_set_test_caller(admin);
-    let result = set_access_rights_int(vec![AccessRight {
-        caller: admin,
-        permissions: Some(vec![
-            Permission::SetAccessRights,
-            Permission::SetConfig,
-            Permission::AddContractTemplate,
-        ]),
-        description: None,
-    }]);
-    assert!(
-        result.is_ok(),
-        "ht_setup_deployment_config_with_access: set_access_rights failed: {:?}",
-        result
-    );
-    ht_setup_deployment_config(admin, deployment_cfg);
 }
 
 /// Calculates the **base** (unbuffered) minimum ICP e8s required for a
@@ -308,6 +285,38 @@ pub(crate) async fn ht_assert_process_deployment_errors(
     ht_set_test_caller(deployer);
     let result = process_deployment_int(deployment_id + 1).await;
     ht_result_err_matches!(result, ProcessDeploymentError::DeploymentNotFound);
+}
+
+/// Asserts all error cases of `get_contract_activation_code_int`, then
+/// performs the happy-path call.
+///
+/// Checks:
+/// - `PermissionDenied` when called by `admin` (non-deployer principal)
+/// - `DeploymentNotFound` when called with `deployment_id + 1`
+/// - happy path succeeds when called by `deployer` with the correct `deployment_id`
+pub(crate) fn ht_assert_activation_code_errors(
+    admin: Principal,
+    deployer: Principal,
+    deployment_id: &DeploymentId,
+) {
+    // CHECK GET ACTIVATION CODE PERMISSION DENIED
+    ht_set_test_caller(admin);
+    let result = get_contract_activation_code_int(*deployment_id);
+    ht_result_err_matches!(result, GetContractActivationCodeError::PermissionDenied);
+
+    // CHECK GET ACTIVATION CODE DEPLOYMENT NOT FOUND
+    ht_set_test_caller(deployer);
+    let result = get_contract_activation_code_int(deployment_id + 1);
+    ht_result_err_matches!(result, GetContractActivationCodeError::DeploymentNotFound);
+
+    // CHECK GET ACTIVATION CODE (happy path)
+    ht_set_test_caller(deployer);
+    let result = get_contract_activation_code_int(*deployment_id);
+    assert!(
+        result.is_ok(),
+        "ht_assert_activation_code_errors: get_contract_activation_code_int failed: {:?}",
+        result
+    );
 }
 
 /// Asserts the full set of `obtain_contract_certificate_int` and
@@ -567,6 +576,58 @@ pub(crate) async fn ht_drive_to_finalized(deployer: Principal, deployment_id: &D
         DeploymentState::FinalizeDeployment {
             result: DeploymentResult::Success,
             sub_state: FinalizeDeploymentState::Finalized
+        }
+    );
+}
+
+/// Drives from `UploadContractWasm` through all wasm chunks →
+/// `InstallContractWasm` → `MakeContractSelfControlled` →
+/// `FinalizeDeployment { StartDeploymentFinalization }`.
+///
+/// Call this after [`ht_assert_certificate_errors_and_initialize`] once the
+/// deployment is in `UploadContractWasm` state.
+///
+/// After this function returns the deployment is in
+/// `FinalizeDeployment { StartDeploymentFinalization }`.  The caller is
+/// responsible for performing any test-specific assertions at that point and
+/// then triggering the final `process_deployment_int` call to reach `Finalized`.
+pub(crate) async fn ht_drive_upload_to_start_finalization(
+    deployer: Principal,
+    deployment_id: &DeploymentId,
+) {
+    // Upload all wasm chunks (loop until no longer in UploadContractWasm)
+    loop {
+        let still_uploading = read_state(|state| {
+            matches!(
+                &state
+                    .get_model()
+                    .get_deployments_storage()
+                    .get_deployment(deployment_id)
+                    .unwrap()
+                    .state
+                    .value,
+                DeploymentState::UploadContractWasm { .. }
+            )
+        });
+        if !still_uploading {
+            break;
+        }
+        advance_and_process(deployer, deployment_id).await;
+    }
+
+    // InstallContractWasm → MakeContractSelfControlled
+    ht_deployment_state_matches!(deployment_id, DeploymentState::InstallContractWasm { .. });
+    advance_and_process(deployer, deployment_id).await;
+
+    // MakeContractSelfControlled → FinalizeDeployment { StartDeploymentFinalization }
+    ht_deployment_state_matches!(deployment_id, DeploymentState::MakeContractSelfControlled);
+    advance_and_process(deployer, deployment_id).await;
+
+    ht_deployment_state_matches!(
+        deployment_id,
+        DeploymentState::FinalizeDeployment {
+            result: DeploymentResult::Success,
+            sub_state: FinalizeDeploymentState::StartDeploymentFinalization
         }
     );
 }

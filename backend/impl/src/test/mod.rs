@@ -21,9 +21,15 @@ mod tests {
         read_state,
         state::CanisterState,
         test::tests::components::{
-            certification::CertificationTest, cmc::CmcTest, ic::IcTest,
-            ic_management::IcManagementTest, icrc2_ledger::ICRC2LedgerTest, ledger::LedgerTest,
-            logger::PrintLoggerImpl, rand::IcRandTest, time::TimeTest,
+            certification::CertificationTest,
+            cmc::CmcTest,
+            ic::{ht_reset_caller, IcTest},
+            ic_management::{ht_reset_ic_chunks, IcManagementTest},
+            icrc2_ledger::{ht_reset_icrc2, ICRC2LedgerTest},
+            ledger::{ht_reset_ledger, LedgerTest},
+            logger::PrintLoggerImpl,
+            rand::IcRandTest,
+            time::{ht_reset_time, TimeTest},
         },
         updates::set_config::set_config_int,
     };
@@ -45,6 +51,12 @@ mod tests {
     // }
 
     pub(crate) fn ht_init_test_hub() {
+        // Reset all thread-local test state from any previous test run on this thread.
+        ht_reset_ledger();
+        ht_reset_icrc2();
+        ht_reset_time();
+        ht_reset_caller();
+        ht_reset_ic_chunks();
         init_state(CanisterState::new(
             ht_create_environment(),
             DataModel::init(),
@@ -76,7 +88,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    pub fn ht_create_environment() -> Environment {
+    fn ht_create_environment() -> Environment {
         let ic = IcTest::new();
         Environment::new(
             Box::new(LedgerTest::new(ic.get_canister())),
