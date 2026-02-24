@@ -129,7 +129,11 @@ type ContractTemplateInformation = record {
   registered : nat64;
   retired : opt Timestamped;
 };
-type ContractTemplatesFilter = record { blocked : opt bool; filter : opt text };
+type ContractTemplatesFilter = record {
+  blocked : opt bool;
+  filter : opt text;
+  retired : opt bool;
+};
 type ContractTemplatesSortingKey = variant {
   DeploymentsCount;
   ContractTemplateId;
