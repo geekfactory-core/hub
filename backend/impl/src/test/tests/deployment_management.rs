@@ -1,29 +1,26 @@
 use crate::{
     get_env,
-    handlers::{
-        deployments::expenses_calculator::round_e8s_ceil,
-        wallet::get_deployment_transit_canister_sub_account,
-    },
+    handlers::wallet::get_deployment_transit_canister_sub_account,
     ht_deployment_state_matches, ht_result_err_matches,
     queries::{
         get_contract_activation_code::get_contract_activation_code_int,
         get_deployment::get_deployment_int,
-        obtain_contract_certificate::obtain_contract_certificate_int,
     },
     read_state,
     test::tests::{
         components::{
             cmc::ht_get_created_canister_over_cmc,
             ic::ht_set_test_caller,
-            icrc2_ledger::ht_approve_account,
-            ledger::{ht_deposit_account, ht_get_account_balance, HT_LEDGER_FEE},
+            ledger::{ht_get_account_balance, HT_LEDGER_FEE},
             time::ht_set_test_time,
         },
         drivers::{
             contract::ht_add_contract,
             deployment::{
-                ht_calc_expenses_amount, ht_drive_to_deploying, ht_setup_deployment_config,
-                DeploymentConfig,
+                get_deployment_lock_expiration, ht_assert_certificate_errors_and_initialize,
+                ht_assert_deploying_result, ht_assert_process_deployment_errors,
+                ht_calc_expenses_amount, ht_calc_expenses_amount_buffered, ht_drive_to_deploying,
+                ht_fund_deployer_account, ht_setup_deployment_config, DeploymentConfig,
             },
         },
         ht_get_test_admin, ht_get_test_user,
@@ -34,26 +31,20 @@ use crate::{
     },
     updates::{
         cancel_deployment::cancel_deployment_int, deploy_contract::deploy_contract_int,
-        initialize_contract_certificate::initialize_contract_certificate_int,
         process_deployment::process_deployment_int, set_access_rights::set_access_rights_int,
-        set_config::set_config_int,
         set_contract_template_retired::set_contract_template_retired_int,
     },
 };
 use candid::Principal;
-use common_canister_impl::components::ledger::to_account_identifier;
-use common_canister_types::{LedgerAccount, TimestampMillis};
+use common_canister_types::LedgerAccount;
 use hub_canister_api::{
     cancel_deployment::CancelDeploymentError,
     deploy_contract::DeployContractError,
     get_contract_activation_code::GetContractActivationCodeError,
     get_deployment::{DeploymentFilter, GetDeploymentError, GetDeploymentResult},
-    initialize_contract_certificate::InitializeContractCertificateError,
-    obtain_contract_certificate::ObtainContractCertificateError,
-    process_deployment::ProcessDeploymentError,
     types::{
-        AccessRight, Config, CreateContractCanisterStrategy, CyclesConvertingStrategy,
-        DeploymentId, DeploymentResult, DeploymentState, FinalizeDeploymentState, Permission,
+        AccessRight, CreateContractCanisterStrategy, CyclesConvertingStrategy, DeploymentResult,
+        DeploymentState, FinalizeDeploymentState, Permission,
     },
 };
 use ic_ledger_types::{AccountIdentifier, DEFAULT_SUBACCOUNT};
@@ -192,19 +183,13 @@ async fn test_deploy_contract_low_allowance() {
 
     let expenses_amount = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
-    let approved_account = LedgerAccount::Account {
-        owner: deployer,
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
     // Allowance is 1 less than required — should trigger InsufficientApprovedAccountAllowance
-    ht_approve_account(
-        approved_account_hex.clone(),
-        deployment_cfg.deployment_allowance_expiration_timeout,
+    let (approved_account, _) = ht_fund_deployer_account(
+        deployer,
         expenses_amount - 1,
+        expenses_amount,
+        deployment_cfg.deployment_allowance_expiration_timeout,
     );
-    ht_deposit_account(&approved_account_identifier, expenses_amount);
 
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
     ht_result_err_matches!(
@@ -229,18 +214,12 @@ async fn test_deploy_contract_allowance_expired() {
 
     let expenses_amount = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
-    let approved_account = LedgerAccount::Account {
-        owner: deployer,
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-    ht_approve_account(
-        approved_account_hex.clone(),
-        deployment_cfg.deployment_allowance_expiration_timeout,
+    let (approved_account, _) = ht_fund_deployer_account(
+        deployer,
         expenses_amount,
+        expenses_amount,
+        deployment_cfg.deployment_allowance_expiration_timeout,
     );
-    ht_deposit_account(&approved_account_identifier, expenses_amount);
 
     // Advance time past the allowance expiration window — should trigger AllowanceExpiresTooEarly
     ht_set_test_time(1);
@@ -270,35 +249,14 @@ async fn test_cancel_deploy_contract() {
     .await;
 
     let deployment_id = dr.deployment_id;
-    let approved_account = dr.approved_account.clone();
     let approved_account_hex = dr.approved_account_identifier.to_hex();
-    let contract_deployment_expenses_amount = dr.expenses_amount;
 
-    assert_eq!(deployment_id, 0);
-    assert_eq!(dr.deployment.deployer, deployer);
-    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
-    assert_eq!(dr.deployment.subnet_type, subnet_type);
-    assert_eq!(dr.deployment.need_processing, true);
-    assert_eq!(dr.deployment.approved_account, approved_account);
-    assert_eq!(
-        dr.deployment.deployment_expenses.contract_initial_cycles,
-        TEST_CONTRACT_INITIAL_CYCLES
-    );
-    assert_eq!(
-        dr.deployment.deployment_expenses.deployment_cycles_cost,
-        dr.config.deployment_cycles_cost
-    );
-    assert_eq!(
-        dr.deployment.expenses_amount,
-        contract_deployment_expenses_amount
-    );
-    assert!(matches!(
-        dr.deployment.state,
-        DeploymentState::TransferDeployerFundsToTransitAccount
-    ));
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex.clone()),
-        contract_deployment_expenses_amount
+    ht_assert_deploying_result(
+        &dr,
+        contract_template_id,
+        subnet_type.clone(),
+        TEST_CONTRACT_INITIAL_CYCLES,
+        &approved_account_hex,
     );
 
     // CANCEL FAIL PERMISSION DENIED
@@ -373,31 +331,12 @@ async fn test_deploy_contract_with_cmc() {
     let deployment_fallback_account =
         AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
 
-    assert_eq!(deployment_id, 0);
-    assert_eq!(dr.deployment.deployer, deployer);
-    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
-    assert_eq!(dr.deployment.subnet_type, subnet_type);
-    assert_eq!(dr.deployment.need_processing, true);
-    assert_eq!(dr.deployment.approved_account, approved_account);
-    assert_eq!(
-        dr.deployment.deployment_expenses.contract_initial_cycles,
-        TEST_CONTRACT_INITIAL_CYCLES
-    );
-    assert_eq!(
-        dr.deployment.deployment_expenses.deployment_cycles_cost,
-        dr.config.deployment_cycles_cost
-    );
-    assert_eq!(
-        dr.deployment.expenses_amount,
-        contract_deployment_expenses_amount
-    );
-    assert!(matches!(
-        dr.deployment.state,
-        DeploymentState::TransferDeployerFundsToTransitAccount
-    ));
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex.clone()),
-        contract_deployment_expenses_amount
+    ht_assert_deploying_result(
+        &dr,
+        contract_template_id,
+        subnet_type.clone(),
+        TEST_CONTRACT_INITIAL_CYCLES,
+        &approved_account_hex,
     );
 
     // CHECK ACTIVE DEPLOYMENT EXISTS
@@ -421,16 +360,7 @@ async fn test_deploy_contract_with_cmc() {
     let result = get_contract_activation_code_int(deployment_id);
     assert!(result.is_ok());
 
-    // PROCESS DEPLOYMENT PERMISSION DENIED
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    ht_set_test_caller(ht_get_test_admin());
-    let result = process_deployment_int(deployment_id).await;
-    ht_result_err_matches!(result, ProcessDeploymentError::PermissionDenied);
-
-    // PROCESS DEPLOYMENT DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = process_deployment_int(deployment_id + 1).await;
-    ht_result_err_matches!(result, ProcessDeploymentError::DeploymentNotFound);
+    ht_assert_process_deployment_errors(ht_get_test_admin(), deployer, &deployment_id).await;
 
     // PROCESS DEPLOYMENT TransferDeployerFundsToTransitAccount
     assert!(process_deployment_int(deployment_id).await.is_ok());
@@ -492,63 +422,16 @@ async fn test_deploy_contract_with_cmc() {
     });
     assert_eq!(contract_canister, ht_get_created_canister_over_cmc());
 
-    // CHECK OBTAIN CERTIFICATE PERMISSION DENIED
-    ht_set_test_caller(ht_get_test_admin());
-    let result = obtain_contract_certificate_int(deployment_id);
-    ht_result_err_matches!(result, ObtainContractCertificateError::PermissionDenied);
-
-    // CHECK OBTAIN CERTIFICATE DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = obtain_contract_certificate_int(deployment_id + 1);
-    ht_result_err_matches!(result, ObtainContractCertificateError::DeploymentNotFound);
-
-    // CHECK OBTAIN CERTIFICATE WRONG
-    let result = obtain_contract_certificate_int(deployment_id);
-    ht_result_err_matches!(result, ObtainContractCertificateError::DeploymentWrongState);
-
-    // PROCESS DEPLOYMENT GenerateContractCertificate
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::WaitingReceiveContractCertificate
-    );
-
-    // GET ACTIVE DEPLOYMENT INFORMATION
+    // GET ACTIVE DEPLOYMENT INFORMATION (checked before certificate errors to verify state)
     let result = get_deployment_int(DeploymentFilter::Active { deployer }).unwrap();
     matches!(result, GetDeploymentResult { deployment }
         if deployment.deployment_id == deployment_id);
 
-    // CHECK OBTAIN CERTIFICATE
-    let result = obtain_contract_certificate_int(deployment_id);
-    assert!(result.is_ok());
-    let certificate = result.unwrap().certificate;
+    // Assert certificate errors and perform the happy-path initialize (advances to UploadContractWasm)
+    let certificate =
+        ht_assert_certificate_errors_and_initialize(ht_get_test_admin(), deployer, &deployment_id)
+            .await;
 
-    // INITIALIZE CERTIFICATE FAIL PERMISSION DENIED
-    ht_set_test_caller(Principal::anonymous());
-    let result = initialize_contract_certificate_int(deployment_id, certificate.clone()).await;
-    ht_result_err_matches!(result, InitializeContractCertificateError::PermissionDenied);
-
-    // INITIALIZE CERTIFICATE FAIL DEPLOYMENT NOT FOUND
-    let result = initialize_contract_certificate_int(deployment_id + 1, certificate.clone()).await;
-    ht_result_err_matches!(
-        result,
-        InitializeContractCertificateError::DeploymentNotFound
-    );
-
-    // INITIALIZE CERTIFICATE FAIL WRONG CERTIFICATE
-    ht_set_test_caller(deployer);
-    let mut wrong_certificate = certificate.clone();
-    wrong_certificate.signature[0] ^= 0xFF;
-    let result = initialize_contract_certificate_int(deployment_id, wrong_certificate).await;
-    ht_result_err_matches!(
-        result,
-        InitializeContractCertificateError::InvalidCertificate { .. }
-    );
-
-    // INITIALIZE CERTIFICATE
-    let result = initialize_contract_certificate_int(deployment_id, certificate.clone()).await;
-    assert!(result.is_ok());
     ht_deployment_state_matches!(
         &deployment_id,
         DeploymentState::UploadContractWasm {
@@ -677,31 +560,12 @@ async fn test_deploy_contract_without_cmc() {
     let deployment_fallback_account =
         AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
 
-    assert_eq!(deployment_id, 0);
-    assert_eq!(dr.deployment.deployer, deployer);
-    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
-    assert_eq!(dr.deployment.subnet_type, subnet_type);
-    assert_eq!(dr.deployment.need_processing, true);
-    assert_eq!(dr.deployment.approved_account, approved_account);
-    assert_eq!(
-        dr.deployment.deployment_expenses.contract_initial_cycles,
-        TEST_CONTRACT_INITIAL_CYCLES
-    );
-    assert_eq!(
-        dr.deployment.deployment_expenses.deployment_cycles_cost,
-        dr.config.deployment_cycles_cost
-    );
-    assert_eq!(
-        dr.deployment.expenses_amount,
-        contract_deployment_expenses_amount
-    );
-    assert!(matches!(
-        dr.deployment.state,
-        DeploymentState::TransferDeployerFundsToTransitAccount
-    ));
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex.clone()),
-        contract_deployment_expenses_amount
+    ht_assert_deploying_result(
+        &dr,
+        contract_template_id,
+        subnet_type.clone(),
+        TEST_CONTRACT_INITIAL_CYCLES,
+        &approved_account_hex,
     );
 
     // CHECK ACTIVE DEPLOYMENT EXISTS
@@ -725,16 +589,7 @@ async fn test_deploy_contract_without_cmc() {
     let result = get_contract_activation_code_int(deployment_id);
     assert!(result.is_ok());
 
-    // PROCESS DEPLOYMENT PERMISSION DENIED
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    ht_set_test_caller(ht_get_test_admin());
-    let result = process_deployment_int(deployment_id).await;
-    ht_result_err_matches!(result, ProcessDeploymentError::PermissionDenied);
-
-    // PROCESS DEPLOYMENT DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = process_deployment_int(deployment_id + 1).await;
-    ht_result_err_matches!(result, ProcessDeploymentError::DeploymentNotFound);
+    ht_assert_process_deployment_errors(ht_get_test_admin(), deployer, &deployment_id).await;
 
     // PROCESS DEPLOYMENT TransferDeployerFundsToTransitAccount
     assert!(process_deployment_int(deployment_id).await.is_ok());
@@ -768,63 +623,15 @@ async fn test_deploy_contract_without_cmc() {
     });
     assert_eq!(contract_canister, ht_get_created_canister_over_cmc());
 
-    // CHECK OBTAIN CERTIFICATE PERMISSION DENIED
-    ht_set_test_caller(ht_get_test_admin());
-    let result = obtain_contract_certificate_int(deployment_id);
-    ht_result_err_matches!(result, ObtainContractCertificateError::PermissionDenied);
-
-    // CHECK OBTAIN CERTIFICATE DEPLOYMENT NOT FOUND
-    ht_set_test_caller(deployer);
-    let result = obtain_contract_certificate_int(deployment_id + 1);
-    ht_result_err_matches!(result, ObtainContractCertificateError::DeploymentNotFound);
-
-    // CHECK OBTAIN CERTIFICATE WRONG
-    let result = obtain_contract_certificate_int(deployment_id);
-    ht_result_err_matches!(result, ObtainContractCertificateError::DeploymentWrongState);
-
-    // PROCESS DEPLOYMENT GenerateContractCertificate
-    ht_set_test_time(get_deployment_lock_expiration(&deployment_id));
-    assert!(process_deployment_int(deployment_id).await.is_ok());
-    ht_deployment_state_matches!(
-        &deployment_id,
-        DeploymentState::WaitingReceiveContractCertificate
-    );
-
-    // GET ACTIVE DEPLOYMENT INFORMATION
+    // GET ACTIVE DEPLOYMENT INFORMATION (checked before certificate errors to verify state)
     let result = get_deployment_int(DeploymentFilter::Active { deployer }).unwrap();
     matches!(result, GetDeploymentResult { deployment }
         if deployment.deployment_id == deployment_id);
 
-    // CHECK OBTAIN CERTIFICATE
-    let result = obtain_contract_certificate_int(deployment_id);
-    assert!(result.is_ok());
-    let certificate = result.unwrap().certificate;
-
-    // INITIALIZE CERTIFICATE FAIL PERMISSION DENIED
-    ht_set_test_caller(Principal::anonymous());
-    let result = initialize_contract_certificate_int(deployment_id, certificate.clone()).await;
-    ht_result_err_matches!(result, InitializeContractCertificateError::PermissionDenied);
-
-    // INITIALIZE CERTIFICATE FAIL DEPLOYMENT NOT FOUND
-    let result = initialize_contract_certificate_int(deployment_id + 1, certificate.clone()).await;
-    ht_result_err_matches!(
-        result,
-        InitializeContractCertificateError::DeploymentNotFound
-    );
-
-    // INITIALIZE CERTIFICATE FAIL WRONG CERTIFICATE
-    ht_set_test_caller(deployer);
-    let mut wrong_certificate = certificate.clone();
-    wrong_certificate.signature[0] ^= 0xFF;
-    let result = initialize_contract_certificate_int(deployment_id, wrong_certificate).await;
-    ht_result_err_matches!(
-        result,
-        InitializeContractCertificateError::InvalidCertificate { .. }
-    );
-
-    // INITIALIZE CERTIFICATE
-    let result = initialize_contract_certificate_int(deployment_id, certificate.clone()).await;
-    assert!(result.is_ok());
+    // Assert certificate errors and perform the happy-path initialize (advances to UploadContractWasm)
+    let certificate =
+        ht_assert_certificate_errors_and_initialize(ht_get_test_admin(), deployer, &deployment_id)
+            .await;
     ht_deployment_state_matches!(
         &deployment_id,
         DeploymentState::UploadContractWasm {
@@ -940,38 +747,27 @@ async fn test_deploy_contract_with_after_buffer() {
         ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    let buffer_permyriad = 3333u64;
-    let decimal_places = 6u8;
     let deployment_cfg = DeploymentConfig {
-        deployment_expenses_amount_buffer_permyriad: buffer_permyriad,
-        deployment_expenses_amount_decimal_places: decimal_places,
+        deployment_expenses_amount_buffer_permyriad: 3333,
+        deployment_expenses_amount_decimal_places: 6,
         ..DeploymentConfig::default()
     };
 
     // Configure hub (without deploying yet so we can fund with custom amounts)
     ht_setup_deployment_config(admin, &deployment_cfg);
 
-    let base_expenses = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
-    let buffer_amount = round_e8s_ceil(
-        base_expenses as u128 + (base_expenses as u128 * buffer_permyriad as u128) / 10_000,
-        decimal_places,
-    )
-    .unwrap() as u64;
+    let buffer_amount =
+        ht_calc_expenses_amount_buffered(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
     // Fund with slightly more than the buffer so the test can verify the cap
-    let approved_account = LedgerAccount::Account {
-        owner: deployer,
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-
-    ht_approve_account(
-        approved_account_hex.clone(),
-        deployment_cfg.deployment_allowance_expiration_timeout,
+    // allowance = buffer + 3, balance = buffer + 2 → expenses_amount is capped at allowance min = buffer
+    let (approved_account, approved_account_identifier) = ht_fund_deployer_account(
+        deployer,
         buffer_amount + 3,
+        buffer_amount + 2,
+        deployment_cfg.deployment_allowance_expiration_timeout,
     );
-    ht_deposit_account(&approved_account_identifier, buffer_amount + 2);
+    let approved_account_hex = approved_account_identifier.to_hex();
     ht_set_test_time(0);
 
     ht_set_test_caller(deployer);
@@ -1012,11 +808,9 @@ async fn test_deploy_contract_with_before_buffer() {
         ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    let buffer_permyriad = 3333u64;
-    let decimal_places = 6u8;
     let deployment_cfg = DeploymentConfig {
-        deployment_expenses_amount_buffer_permyriad: buffer_permyriad,
-        deployment_expenses_amount_decimal_places: decimal_places,
+        deployment_expenses_amount_buffer_permyriad: 3333,
+        deployment_expenses_amount_decimal_places: 6,
         ..DeploymentConfig::default()
     };
 
@@ -1024,29 +818,21 @@ async fn test_deploy_contract_with_before_buffer() {
     ht_setup_deployment_config(admin, &deployment_cfg);
 
     let base_expenses = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
-    let buffer_amount = round_e8s_ceil(
-        base_expenses as u128 + (base_expenses as u128 * buffer_permyriad as u128) / 10_000,
-        decimal_places,
-    )
-    .unwrap() as u64;
+    let buffer_amount =
+        ht_calc_expenses_amount_buffered(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
     // Sanity-check: base < buffer (otherwise the test doesn't make sense)
     assert!(base_expenses < buffer_amount);
 
     // Fund with slightly LESS than the buffer — the hub should use allowance/balance as the cap
-    let approved_account = LedgerAccount::Account {
-        owner: deployer,
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-
-    ht_approve_account(
-        approved_account_hex.clone(),
-        deployment_cfg.deployment_allowance_expiration_timeout,
+    // allowance = buffer - 4, balance = buffer - 3 → expenses_amount is capped at allowance min = buffer - 4
+    let (approved_account, approved_account_identifier) = ht_fund_deployer_account(
+        deployer,
         buffer_amount - 4,
+        buffer_amount - 3,
+        deployment_cfg.deployment_allowance_expiration_timeout,
     );
-    ht_deposit_account(&approved_account_identifier, buffer_amount - 3);
+    let approved_account_hex = approved_account_identifier.to_hex();
     ht_set_test_time(0);
 
     ht_set_test_caller(deployer);
@@ -1083,8 +869,7 @@ async fn test_deploy_contract_template_retired() {
     let admin = ht_get_test_admin();
     let contract_def = ht_get_face_contract_def();
 
-    let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    let contract_template_id = ht_add_contract(admin, contract_def, TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
     let approved_account = LedgerAccount::Account {
@@ -1092,19 +877,16 @@ async fn test_deploy_contract_template_retired() {
         subaccount: None,
     };
 
-    // Enable deployment and grant RetireContractTemplate permission
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        is_deployment_available: true,
-        ..config.clone()
-    };
-    assert!(set_config_int(config).is_ok());
+    // Enable deployment
+    ht_setup_deployment_config(admin, &DeploymentConfig::default());
 
+    // Grant RetireContractTemplate permission
+    ht_set_test_caller(admin);
     let result = set_access_rights_int(vec![AccessRight {
         caller: admin,
         permissions: Some(vec![
             Permission::SetAccessRights,
+            Permission::SetConfig,
             Permission::RetireContractTemplate,
         ]),
         description: None,
@@ -1136,18 +918,4 @@ async fn test_deploy_contract_template_retired() {
         result,
         DeployContractError::InsufficientApprovedAccountBalance
     );
-}
-
-fn get_deployment_lock_expiration(deployment_id: &DeploymentId) -> TimestampMillis {
-    read_state(|state| {
-        state
-            .get_model()
-            .get_deployments_storage()
-            .get_deployment(deployment_id)
-            .unwrap()
-            .lock
-            .as_ref()
-            .unwrap()
-            .expiration
-    })
 }
