@@ -519,6 +519,18 @@ type SetConfigError = variant {
   PermissionDenied;
 };
 type SetConfigResponse = variant { Ok; Err : SetConfigError };
+type SetContractTemplateRetiredArgs = record {
+  contract_template_id : nat64;
+  reason : opt text;
+};
+type SetContractTemplateRetiredError = variant {
+  ContractTemplateNotFound;
+  PermissionDenied;
+};
+type SetContractTemplateRetiredResponse = variant {
+  Ok;
+  Err : SetContractTemplateRetiredError;
+};
 type SetUploadWasmGrantArgs = record { grant : opt UploadWasmGrant };
 type SetUploadWasmGrantError = variant { PermissionDenied; WasmLengthIsTooBig };
 type SetUploadWasmGrantResponse = variant { Ok; Err : SetUploadWasmGrantError };
@@ -614,6 +626,9 @@ service : {
     );
   set_access_rights : (SetAccessRightsArgs) -> (SetAccessRightsResponse);
   set_config : (SetConfigArgs) -> (SetConfigResponse);
+  set_contract_template_retired : (SetContractTemplateRetiredArgs) -> (
+      SetContractTemplateRetiredResponse,
+    );
   set_upload_wasm_grant : (SetUploadWasmGrantArgs) -> (
       SetUploadWasmGrantResponse,
     );

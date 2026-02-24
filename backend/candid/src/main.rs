@@ -21,6 +21,7 @@ fn main() {
     generate_update_candid_method!(hub_canister_api, upload_wasm_chunk);
     generate_update_candid_method!(hub_canister_api, add_contract_template);
     generate_update_candid_method!(hub_canister_api, block_contract_template);
+    generate_update_candid_method!(hub_canister_api, set_contract_template_retired);
     generate_update_candid_method!(hub_canister_api, deploy_contract);
     generate_update_candid_method!(hub_canister_api, process_deployment);
     generate_update_candid_method!(hub_canister_api, cancel_deployment);
