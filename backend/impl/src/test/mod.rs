@@ -3,9 +3,11 @@ mod tests {
     mod components;
     mod contract_management;
     mod deployment_management;
+    pub(crate) mod drivers;
     mod expenses_calculator;
     mod set_access_rights;
     mod set_config;
+    pub(crate) mod support;
 
     use candid::Principal;
     use common_canister_impl::components::ic::Ic;

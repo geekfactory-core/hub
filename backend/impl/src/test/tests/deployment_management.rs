@@ -1,22 +1,3 @@
-use candid::Principal;
-use common_canister_impl::components::ledger::to_account_identifier;
-use common_canister_types::{LedgerAccount, TimestampMillis};
-use hub_canister_api::{
-    cancel_deployment::CancelDeploymentError,
-    deploy_contract::DeployContractError,
-    get_contract_activation_code::GetContractActivationCodeError,
-    get_deployment::{DeploymentFilter, GetDeploymentError, GetDeploymentResult},
-    initialize_contract_certificate::InitializeContractCertificateError,
-    obtain_contract_certificate::ObtainContractCertificateError,
-    process_deployment::ProcessDeploymentError,
-    types::{
-        AccessRight, Config, CreateContractCanisterStrategy, CyclesConvertingStrategy,
-        DeploymentId, DeploymentResult, DeploymentState, FinalizeDeploymentState,
-        IcpXdrConversionRateStrategy, Permission,
-    },
-};
-use ic_ledger_types::{AccountIdentifier, DEFAULT_SUBACCOUNT};
-
 use crate::{
     get_env,
     handlers::{
@@ -38,10 +19,18 @@ use crate::{
             ledger::{ht_deposit_account, ht_get_account_balance, HT_LEDGER_FEE},
             time::ht_set_test_time,
         },
-        contract_management::{
-            ht_add_contract, ht_get_face_contract_def, TEST_CONTRACT_INITIAL_CYCLES,
+        drivers::{
+            contract::ht_add_contract,
+            deployment::{
+                ht_calc_expenses_amount, ht_drive_to_deploying, ht_setup_deployment_config,
+                DeploymentConfig,
+            },
         },
         ht_get_test_admin, ht_get_test_user,
+        support::fixtures::{
+            ht_get_face_contract_def, TEST_CONTRACT_INITIAL_CYCLES, TEST_DEPLOYMENT_CYCLES_COST,
+            TEST_WASM,
+        },
     },
     updates::{
         cancel_deployment::cancel_deployment_int, deploy_contract::deploy_contract_int,
@@ -51,14 +40,30 @@ use crate::{
         set_contract_template_retired::set_contract_template_retired_int,
     },
 };
+use candid::Principal;
+use common_canister_impl::components::ledger::to_account_identifier;
+use common_canister_types::{LedgerAccount, TimestampMillis};
+use hub_canister_api::{
+    cancel_deployment::CancelDeploymentError,
+    deploy_contract::DeployContractError,
+    get_contract_activation_code::GetContractActivationCodeError,
+    get_deployment::{DeploymentFilter, GetDeploymentError, GetDeploymentResult},
+    initialize_contract_certificate::InitializeContractCertificateError,
+    obtain_contract_certificate::ObtainContractCertificateError,
+    process_deployment::ProcessDeploymentError,
+    types::{
+        AccessRight, Config, CreateContractCanisterStrategy, CyclesConvertingStrategy,
+        DeploymentId, DeploymentResult, DeploymentState, FinalizeDeploymentState, Permission,
+    },
+};
+use ic_ledger_types::{AccountIdentifier, DEFAULT_SUBACCOUNT};
 
 #[tokio::test]
 async fn test_deploy_contract_caller_not_authorized() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
     let approved_account = LedgerAccount::Account {
@@ -74,10 +79,9 @@ async fn test_deploy_contract_caller_not_authorized() {
 #[tokio::test]
 async fn test_deploy_contract_deployment_unavailable() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
     let approved_account = LedgerAccount::Account {
@@ -93,10 +97,9 @@ async fn test_deploy_contract_deployment_unavailable() {
 #[tokio::test]
 async fn test_deploy_contract_contract_not_found() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
     let approved_account = LedgerAccount::Account {
@@ -104,13 +107,8 @@ async fn test_deploy_contract_contract_not_found() {
         subaccount: None,
     };
 
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        is_deployment_available: true,
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
+    // Enable deployment
+    ht_setup_deployment_config(admin, &DeploymentConfig::default());
 
     ht_set_test_caller(ht_get_test_user());
     let result =
@@ -121,19 +119,13 @@ async fn test_deploy_contract_contract_not_found() {
 #[tokio::test]
 async fn test_deploy_contract_invalid_approved_account() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        is_deployment_available: true,
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
+    // Enable deployment
+    ht_setup_deployment_config(admin, &DeploymentConfig::default());
 
     let deployer = ht_get_test_user();
     ht_set_test_caller(deployer);
@@ -155,29 +147,28 @@ async fn test_deploy_contract_invalid_approved_account() {
 #[tokio::test]
 async fn test_deploy_contract_low_balance() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
-        subaccount: None,
-    };
-
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
+    // Enable deployment with a non-zero cycles cost so balance check triggers
+    ht_setup_deployment_config(
+        admin,
+        &DeploymentConfig {
+            deployment_cycles_cost: TEST_DEPLOYMENT_CYCLES_COST,
+            ..DeploymentConfig::default()
+        },
+    );
 
     let deployer = ht_get_test_user();
     ht_set_test_caller(deployer);
 
+    let approved_account = LedgerAccount::Account {
+        owner: deployer,
+        subaccount: None,
+    };
+    // No funds deposited — balance is zero
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
     ht_result_err_matches!(
         result,
@@ -188,49 +179,32 @@ async fn test_deploy_contract_low_balance() {
 #[tokio::test]
 async fn test_deploy_contract_low_allowance() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let xdr_permyriad_per_icp = 20_000;
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_allowance_expiration_timeout: 60_000,
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
+    let deployment_cfg = DeploymentConfig::default();
+    ht_setup_deployment_config(admin, &deployment_cfg);
 
     let deployer = ht_get_test_user();
     ht_set_test_caller(deployer);
 
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
+    let expenses_amount = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
     let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
+        owner: deployer,
         subaccount: None,
     };
     let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
     let approved_account_hex = approved_account_identifier.to_hex();
-    // let expires_at = get_holder_model(|_, model| model.sale_deal.as_ref().unwrap().expiration_time);
+    // Allowance is 1 less than required — should trigger InsufficientApprovedAccountAllowance
     ht_approve_account(
         approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
-        contract_deployment_expenses_amount - 1,
+        deployment_cfg.deployment_allowance_expiration_timeout,
+        expenses_amount - 1,
     );
-    ht_deposit_account(
-        &approved_account_identifier,
-        contract_deployment_expenses_amount,
-    );
+    ht_deposit_account(&approved_account_identifier, expenses_amount);
 
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
     ht_result_err_matches!(
@@ -242,50 +216,33 @@ async fn test_deploy_contract_low_allowance() {
 #[tokio::test]
 async fn test_deploy_contract_allowance_expired() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let xdr_permyriad_per_icp = 20_000;
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_allowance_expiration_timeout: 60_000,
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
+    let deployment_cfg = DeploymentConfig::default();
+    ht_setup_deployment_config(admin, &deployment_cfg);
 
     let deployer = ht_get_test_user();
     ht_set_test_caller(deployer);
 
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
+    let expenses_amount = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
 
     let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
+        owner: deployer,
         subaccount: None,
     };
     let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
     let approved_account_hex = approved_account_identifier.to_hex();
-    // let expires_at = get_holder_model(|_, model| model.sale_deal.as_ref().unwrap().expiration_time);
     ht_approve_account(
         approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
-        contract_deployment_expenses_amount,
+        deployment_cfg.deployment_allowance_expiration_timeout,
+        expenses_amount,
     );
-    ht_deposit_account(
-        &approved_account_identifier,
-        contract_deployment_expenses_amount,
-    );
+    ht_deposit_account(&approved_account_identifier, expenses_amount);
 
+    // Advance time past the allowance expiration window — should trigger AllowanceExpiresTooEarly
     ht_set_test_time(1);
 
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
@@ -295,88 +252,48 @@ async fn test_deploy_contract_allowance_expired() {
 #[tokio::test]
 async fn test_cancel_deploy_contract() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
+    let deployer = ht_get_test_user();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let xdr_permyriad_per_icp = 20_000;
-    let cmc_canister = Principal::management_canister();
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_allowance_expiration_timeout: 60_000,
-        contract_wasm_upload_chunk_size: 1000,
-        cycles_converting_strategy: CyclesConvertingStrategy::CMCTopUp { cmc_canister },
-        contract_canister_creation_strategy: CreateContractCanisterStrategy::OverCMC {
-            cmc_canister,
-        },
-        ..config.clone()
-    };
-    assert!(set_config_int(config.clone()).is_ok());
-
-    let deployer = ht_get_test_user();
-    ht_set_test_caller(deployer);
-
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
-
-    let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-    ht_approve_account(
-        approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
-        contract_deployment_expenses_amount,
-    );
-    ht_deposit_account(
-        &approved_account_identifier,
-        contract_deployment_expenses_amount,
-    );
-
-    ht_set_test_time(0);
-
     let subnet_type = Some("main".to_string());
-    let result = deploy_contract_int(
-        approved_account.clone(),
+    let dr = ht_drive_to_deploying(
+        admin,
+        deployer,
         contract_template_id,
+        &DeploymentConfig::default(),
+        TEST_CONTRACT_INITIAL_CYCLES,
         subnet_type.clone(),
     )
     .await;
-    assert!(result.is_ok());
 
-    let deployment = result.unwrap().deployment;
-    let deployment_id = deployment.deployment_id;
+    let deployment_id = dr.deployment_id;
+    let approved_account = dr.approved_account.clone();
+    let approved_account_hex = dr.approved_account_identifier.to_hex();
+    let contract_deployment_expenses_amount = dr.expenses_amount;
+
     assert_eq!(deployment_id, 0);
-    assert_eq!(deployment.deployer, deployer);
-    assert_eq!(deployment.contract_template_id, contract_template_id);
-    assert_eq!(deployment.subnet_type, subnet_type);
-    assert_eq!(deployment.need_processing, true);
-    assert_eq!(deployment.approved_account, approved_account);
+    assert_eq!(dr.deployment.deployer, deployer);
+    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
+    assert_eq!(dr.deployment.subnet_type, subnet_type);
+    assert_eq!(dr.deployment.need_processing, true);
+    assert_eq!(dr.deployment.approved_account, approved_account);
     assert_eq!(
-        deployment.deployment_expenses.contract_initial_cycles,
+        dr.deployment.deployment_expenses.contract_initial_cycles,
         TEST_CONTRACT_INITIAL_CYCLES
     );
     assert_eq!(
-        deployment.deployment_expenses.deployment_cycles_cost,
-        config.deployment_cycles_cost
+        dr.deployment.deployment_expenses.deployment_cycles_cost,
+        dr.config.deployment_cycles_cost
     );
     assert_eq!(
-        deployment.expenses_amount,
+        dr.deployment.expenses_amount,
         contract_deployment_expenses_amount
     );
     assert!(matches!(
-        deployment.state,
+        dr.deployment.state,
         DeploymentState::TransferDeployerFundsToTransitAccount
     ));
     assert_eq!(
@@ -422,95 +339,60 @@ async fn test_cancel_deploy_contract() {
 #[tokio::test]
 async fn test_deploy_contract_with_cmc() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
+    let deployer = ht_get_test_user();
 
-    let wasm = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let wasm = TEST_WASM.to_vec();
     let contract_wasm_upload_chunk_size = 4;
     let contract_wasm_upload_chunk_count = wasm.len().div_ceil(contract_wasm_upload_chunk_size);
 
-    let contract_template_id = ht_add_contract(admin, contract_def, wasm.clone());
+    let contract_template_id = ht_add_contract(admin, ht_get_face_contract_def(), wasm);
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let deployment_fallback_account =
-        AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
-    let deployment_fallback_account_hex = deployment_fallback_account.to_hex();
-    let xdr_permyriad_per_icp = 20_000;
-    let cmc_canister = Principal::management_canister();
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        deployment_fallback_account_hex,
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_allowance_expiration_timeout: 60_000,
+    let deployment_cfg = DeploymentConfig {
         contract_wasm_upload_chunk_size,
-        cycles_converting_strategy: CyclesConvertingStrategy::CMCTopUp { cmc_canister },
-        contract_canister_creation_strategy: CreateContractCanisterStrategy::OverCMC {
-            cmc_canister,
-        },
-        ..config.clone()
+        ..DeploymentConfig::default()
     };
-    assert!(set_config_int(config.clone()).is_ok());
-
-    let deployer = ht_get_test_user();
-    ht_set_test_caller(deployer);
-
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
-
-    let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-    ht_approve_account(
-        approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
-        contract_deployment_expenses_amount,
-    );
-    ht_deposit_account(
-        &approved_account_identifier,
-        contract_deployment_expenses_amount,
-    );
-
-    ht_set_test_time(0);
 
     let subnet_type = Some("main".to_string());
-    let result = deploy_contract_int(
-        approved_account.clone(),
+    let dr = ht_drive_to_deploying(
+        admin,
+        deployer,
         contract_template_id,
+        &deployment_cfg,
+        TEST_CONTRACT_INITIAL_CYCLES,
         subnet_type.clone(),
     )
     .await;
-    assert!(result.is_ok());
 
-    let deployment = result.unwrap().deployment;
-    let deployment_id = deployment.deployment_id;
+    let deployment_id = dr.deployment_id;
+    let approved_account = dr.approved_account.clone();
+    let approved_account_identifier = dr.approved_account_identifier;
+    let approved_account_hex = approved_account_identifier.to_hex();
+    let contract_deployment_expenses_amount = dr.expenses_amount;
+    let cmc_canister = Principal::management_canister();
+    let deployment_fallback_account =
+        AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
+
     assert_eq!(deployment_id, 0);
-    assert_eq!(deployment.deployer, deployer);
-    assert_eq!(deployment.contract_template_id, contract_template_id);
-    assert_eq!(deployment.subnet_type, subnet_type);
-    assert_eq!(deployment.need_processing, true);
-    assert_eq!(deployment.approved_account, approved_account);
+    assert_eq!(dr.deployment.deployer, deployer);
+    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
+    assert_eq!(dr.deployment.subnet_type, subnet_type);
+    assert_eq!(dr.deployment.need_processing, true);
+    assert_eq!(dr.deployment.approved_account, approved_account);
     assert_eq!(
-        deployment.deployment_expenses.contract_initial_cycles,
+        dr.deployment.deployment_expenses.contract_initial_cycles,
         TEST_CONTRACT_INITIAL_CYCLES
     );
     assert_eq!(
-        deployment.deployment_expenses.deployment_cycles_cost,
-        config.deployment_cycles_cost
+        dr.deployment.deployment_expenses.deployment_cycles_cost,
+        dr.config.deployment_cycles_cost
     );
     assert_eq!(
-        deployment.expenses_amount,
+        dr.deployment.expenses_amount,
         contract_deployment_expenses_amount
     );
     assert!(matches!(
-        deployment.state,
+        dr.deployment.state,
         DeploymentState::TransferDeployerFundsToTransitAccount
     ));
     assert_eq!(
@@ -760,92 +642,61 @@ async fn test_deploy_contract_with_cmc() {
 #[tokio::test]
 async fn test_deploy_contract_without_cmc() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
+    let deployer = ht_get_test_user();
 
-    let wasm = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let wasm = TEST_WASM.to_vec();
     let contract_wasm_upload_chunk_size = 4;
     let contract_wasm_upload_chunk_count = wasm.len().div_ceil(contract_wasm_upload_chunk_size);
 
-    let contract_template_id = ht_add_contract(admin, contract_def, wasm.clone());
+    let contract_template_id = ht_add_contract(admin, ht_get_face_contract_def(), wasm);
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let deployment_fallback_account =
-        AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
-    let deployment_fallback_account_hex = deployment_fallback_account.to_hex();
-    let xdr_permyriad_per_icp = 20_000;
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let config = Config {
-        deployment_fallback_account_hex,
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        is_deployment_available: true,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_allowance_expiration_timeout: 60_000,
+    let deployment_cfg = DeploymentConfig {
         contract_wasm_upload_chunk_size,
         cycles_converting_strategy: CyclesConvertingStrategy::Skip,
         contract_canister_creation_strategy: CreateContractCanisterStrategy::OverManagementCanister,
-        ..config.clone()
+        ..DeploymentConfig::default()
     };
-    assert!(set_config_int(config.clone()).is_ok());
-
-    let deployer = ht_get_test_user();
-    ht_set_test_caller(deployer);
-
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
-
-    let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
-        subaccount: None,
-    };
-    let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
-    let approved_account_hex = approved_account_identifier.to_hex();
-    ht_approve_account(
-        approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
-        contract_deployment_expenses_amount,
-    );
-    ht_deposit_account(
-        &approved_account_identifier,
-        contract_deployment_expenses_amount,
-    );
-
-    ht_set_test_time(0);
 
     let subnet_type = Some("main".to_string());
-    let result = deploy_contract_int(
-        approved_account.clone(),
+    let dr = ht_drive_to_deploying(
+        admin,
+        deployer,
         contract_template_id,
+        &deployment_cfg,
+        TEST_CONTRACT_INITIAL_CYCLES,
         subnet_type.clone(),
     )
     .await;
-    assert!(result.is_ok());
 
-    let deployment = result.unwrap().deployment;
-    let deployment_id = deployment.deployment_id;
+    let deployment_id = dr.deployment_id;
+    let approved_account = dr.approved_account.clone();
+    let approved_account_identifier = dr.approved_account_identifier;
+    let approved_account_hex = approved_account_identifier.to_hex();
+    let contract_deployment_expenses_amount = dr.expenses_amount;
+    let deployment_fallback_account =
+        AccountIdentifier::new(&Principal::management_canister(), &DEFAULT_SUBACCOUNT);
+
     assert_eq!(deployment_id, 0);
-    assert_eq!(deployment.deployer, deployer);
-    assert_eq!(deployment.contract_template_id, contract_template_id);
-    assert_eq!(deployment.subnet_type, subnet_type);
-    assert_eq!(deployment.need_processing, true);
-    assert_eq!(deployment.approved_account, approved_account);
+    assert_eq!(dr.deployment.deployer, deployer);
+    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
+    assert_eq!(dr.deployment.subnet_type, subnet_type);
+    assert_eq!(dr.deployment.need_processing, true);
+    assert_eq!(dr.deployment.approved_account, approved_account);
     assert_eq!(
-        deployment.deployment_expenses.contract_initial_cycles,
+        dr.deployment.deployment_expenses.contract_initial_cycles,
         TEST_CONTRACT_INITIAL_CYCLES
     );
     assert_eq!(
-        deployment.deployment_expenses.deployment_cycles_cost,
-        config.deployment_cycles_cost
+        dr.deployment.deployment_expenses.deployment_cycles_cost,
+        dr.config.deployment_cycles_cost
     );
     assert_eq!(
-        deployment.expenses_amount,
+        dr.deployment.expenses_amount,
         contract_deployment_expenses_amount
     );
     assert!(matches!(
-        deployment.state,
+        dr.deployment.state,
         DeploymentState::TransferDeployerFundsToTransitAccount
     ));
     assert_eq!(
@@ -1083,65 +934,47 @@ async fn test_deploy_contract_without_cmc() {
 #[tokio::test]
 async fn test_deploy_contract_with_after_buffer() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
+    let deployer = ht_get_test_user();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let cmc_canister = Principal::management_canister();
-    let xdr_permyriad_per_icp = 20_000;
-    let config = Config {
-        contract_wasm_upload_chunk_size: 1000,
-        is_deployment_available: true,
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        cycles_converting_strategy: CyclesConvertingStrategy::CMCTopUp { cmc_canister },
-        contract_canister_creation_strategy: CreateContractCanisterStrategy::OverCMC {
-            cmc_canister,
-        },
-        deployment_allowance_expiration_timeout: 60_000,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_expenses_amount_buffer_permyriad: 3333,
-        deployment_expenses_amount_decimal_places: 6,
-        ..config.clone()
+    let buffer_permyriad = 3333u64;
+    let decimal_places = 6u8;
+    let deployment_cfg = DeploymentConfig {
+        deployment_expenses_amount_buffer_permyriad: buffer_permyriad,
+        deployment_expenses_amount_decimal_places: decimal_places,
+        ..DeploymentConfig::default()
     };
-    assert!(set_config_int(config.clone()).is_ok());
 
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
+    // Configure hub (without deploying yet so we can fund with custom amounts)
+    ht_setup_deployment_config(admin, &deployment_cfg);
 
-    let deployer = ht_get_test_user();
-    ht_set_test_caller(deployer);
+    let base_expenses = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
+    let buffer_amount = round_e8s_ceil(
+        base_expenses as u128 + (base_expenses as u128 * buffer_permyriad as u128) / 10_000,
+        decimal_places,
+    )
+    .unwrap() as u64;
 
+    // Fund with slightly more than the buffer so the test can verify the cap
     let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
+        owner: deployer,
         subaccount: None,
     };
     let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
     let approved_account_hex = approved_account_identifier.to_hex();
 
-    // DEPOSIT FUNDS TO WALLET ACCOUNT
-    let buffer_amount = round_e8s_ceil(
-        contract_deployment_expenses_amount as u128
-            + (contract_deployment_expenses_amount as u128
-                * config.deployment_expenses_amount_buffer_permyriad as u128)
-                / 10_000,
-        config.deployment_expenses_amount_decimal_places,
-    )
-    .unwrap() as u64;
-
     ht_approve_account(
         approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
+        deployment_cfg.deployment_allowance_expiration_timeout,
         buffer_amount + 3,
     );
     ht_deposit_account(&approved_account_identifier, buffer_amount + 2);
+    ht_set_test_time(0);
 
+    ht_set_test_caller(deployer);
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
     assert!(result.is_ok());
     let deployment = result.unwrap().deployment;
@@ -1157,7 +990,7 @@ async fn test_deploy_contract_with_after_buffer() {
     );
     assert_eq!(
         deployment.deployment_expenses.deployment_cycles_cost,
-        config.deployment_cycles_cost
+        deployment_cfg.deployment_cycles_cost
     );
     assert_eq!(deployment.expenses_amount, buffer_amount);
     assert!(matches!(
@@ -1173,51 +1006,36 @@ async fn test_deploy_contract_with_after_buffer() {
 #[tokio::test]
 async fn test_deploy_contract_with_before_buffer() {
     let admin = ht_get_test_admin();
-    let contract_def = ht_get_face_contract_def();
+    let deployer = ht_get_test_user();
 
     let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        ht_add_contract(admin, ht_get_face_contract_def(), TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
-    ht_set_test_caller(admin);
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let cmc_canister = Principal::management_canister();
-    let xdr_permyriad_per_icp = 20_000;
-    let config = Config {
-        contract_wasm_upload_chunk_size: 1000,
-        is_deployment_available: true,
-        icp_xdr_conversion_rate_strategy: IcpXdrConversionRateStrategy::Fixed {
-            xdr_permyriad_per_icp,
-        },
-        cycles_converting_strategy: CyclesConvertingStrategy::CMCTopUp { cmc_canister },
-        contract_canister_creation_strategy: CreateContractCanisterStrategy::OverCMC {
-            cmc_canister,
-        },
-        deployment_allowance_expiration_timeout: 60_000,
-        deployment_cycles_cost: 1_000_000_000,
-        deployment_expenses_amount_buffer_permyriad: 3333,
-        deployment_expenses_amount_decimal_places: 6,
-        ..config.clone()
+    let buffer_permyriad = 3333u64;
+    let decimal_places = 6u8;
+    let deployment_cfg = DeploymentConfig {
+        deployment_expenses_amount_buffer_permyriad: buffer_permyriad,
+        deployment_expenses_amount_decimal_places: decimal_places,
+        ..DeploymentConfig::default()
     };
-    assert!(set_config_int(config.clone()).is_ok());
 
-    let contract_deployment_expenses_amount = ((TEST_CONTRACT_INITIAL_CYCLES
-        + config.deployment_cycles_cost)
-        / xdr_permyriad_per_icp as u128) as u64;
+    // Configure hub without starting a deployment yet (custom funding amounts needed)
+    ht_setup_deployment_config(admin, &deployment_cfg);
 
+    let base_expenses = ht_calc_expenses_amount(&deployment_cfg, TEST_CONTRACT_INITIAL_CYCLES);
     let buffer_amount = round_e8s_ceil(
-        contract_deployment_expenses_amount as u128
-            + (contract_deployment_expenses_amount as u128
-                * config.deployment_expenses_amount_buffer_permyriad as u128)
-                / 10_000,
-        config.deployment_expenses_amount_decimal_places,
+        base_expenses as u128 + (base_expenses as u128 * buffer_permyriad as u128) / 10_000,
+        decimal_places,
     )
     .unwrap() as u64;
 
-    assert!(contract_deployment_expenses_amount < buffer_amount);
+    // Sanity-check: base < buffer (otherwise the test doesn't make sense)
+    assert!(base_expenses < buffer_amount);
 
+    // Fund with slightly LESS than the buffer — the hub should use allowance/balance as the cap
     let approved_account = LedgerAccount::Account {
-        owner: ht_get_test_user(),
+        owner: deployer,
         subaccount: None,
     };
     let approved_account_identifier = to_account_identifier(&approved_account).unwrap();
@@ -1225,14 +1043,13 @@ async fn test_deploy_contract_with_before_buffer() {
 
     ht_approve_account(
         approved_account_hex.clone(),
-        config.deployment_allowance_expiration_timeout,
+        deployment_cfg.deployment_allowance_expiration_timeout,
         buffer_amount - 4,
     );
     ht_deposit_account(&approved_account_identifier, buffer_amount - 3);
+    ht_set_test_time(0);
 
-    let deployer = ht_get_test_user();
     ht_set_test_caller(deployer);
-
     let result = deploy_contract_int(approved_account, contract_template_id, None).await;
     assert!(result.is_ok());
     let deployment = result.unwrap().deployment;
@@ -1248,7 +1065,7 @@ async fn test_deploy_contract_with_before_buffer() {
     );
     assert_eq!(
         deployment.deployment_expenses.deployment_cycles_cost,
-        config.deployment_cycles_cost
+        deployment_cfg.deployment_cycles_cost
     );
     assert_eq!(deployment.expenses_amount, buffer_amount - 4);
     assert!(matches!(
