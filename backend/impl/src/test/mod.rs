@@ -34,9 +34,6 @@ mod tests {
         updates::set_config::set_config_int,
     };
 
-    // pub const HT_TEST_CONTRACT_TEMPLATE_ID: ContractTemplateId = 1;
-    // pub const HT_TEST_DEPLOYMENT_ID: DeploymentId = 1;
-
     pub(crate) fn ht_get_test_admin() -> Principal {
         Principal::from_text("lpag6-ktxsv-3oewm-s4gok-fzo2e-qcn2v-kzdpi-eozwc-ddv2o-rbbx4-wae")
             .unwrap()
@@ -45,10 +42,6 @@ mod tests {
     pub(crate) fn ht_get_test_user() -> Principal {
         Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap()
     }
-
-    // pub(crate) fn ht_get_test_contract_canister() -> Principal {
-    // Principal::from_text("xapqu-4qaaa-aaaak-quexq-cai").unwrap()
-    // }
 
     pub(crate) fn ht_init_test_hub() {
         // Reset all thread-local test state from any previous test run on this thread.

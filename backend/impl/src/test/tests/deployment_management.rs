@@ -16,8 +16,8 @@ use crate::{
             deployment::{
                 get_deployment_lock_expiration, ht_assert_activation_code_errors,
                 ht_assert_certificate_errors_and_initialize, ht_assert_deploying_result,
-                ht_assert_process_deployment_errors, ht_calc_expenses_amount,
-                ht_calc_expenses_amount_buffered, ht_drive_to_deploying,
+                ht_assert_deployment_fields, ht_assert_process_deployment_errors,
+                ht_calc_expenses_amount, ht_calc_expenses_amount_buffered, ht_drive_to_deploying,
                 ht_drive_upload_to_start_finalization, ht_fund_deployer_account,
                 ht_setup_deployment_config, DeploymentConfig,
             },
@@ -631,28 +631,19 @@ async fn test_deploy_contract_with_after_buffer() {
     let result = deploy_contract_int(approved_account.clone(), contract_template_id, None).await;
     assert!(result.is_ok());
     let deployment = result.unwrap().deployment;
-    let deployment_id = deployment.deployment_id;
-    assert_eq!(deployment_id, 0);
-    assert_eq!(deployment.deployer, deployer);
-    assert_eq!(deployment.contract_template_id, contract_template_id);
-    assert_eq!(deployment.subnet_type, None);
-    assert_eq!(deployment.need_processing, true);
-    assert_eq!(
-        deployment.deployment_expenses.contract_initial_cycles,
-        TEST_CONTRACT_INITIAL_CYCLES
-    );
-    assert_eq!(
-        deployment.deployment_expenses.deployment_cycles_cost,
-        deployment_cfg.deployment_cycles_cost
-    );
-    assert_eq!(deployment.expenses_amount, buffer_amount);
-    assert!(matches!(
-        deployment.state,
-        DeploymentState::TransferDeployerFundsToTransitAccount
-    ));
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex),
-        buffer_amount + 2
+
+    // allowance (buffer+3) > balance (buffer+2) → expenses_amount is capped at allowance min = buffer_amount
+    // balance is NOT consumed at this stage, so it remains buffer_amount + 2
+    ht_assert_deployment_fields(
+        &deployment,
+        deployer,
+        contract_template_id,
+        None,
+        TEST_CONTRACT_INITIAL_CYCLES,
+        deployment_cfg.deployment_cycles_cost,
+        buffer_amount,
+        &approved_account_hex,
+        buffer_amount + 2,
     );
 }
 
@@ -696,28 +687,19 @@ async fn test_deploy_contract_with_before_buffer() {
     let result = deploy_contract_int(approved_account, contract_template_id, None).await;
     assert!(result.is_ok());
     let deployment = result.unwrap().deployment;
-    let deployment_id = deployment.deployment_id;
-    assert_eq!(deployment_id, 0);
-    assert_eq!(deployment.deployer, deployer);
-    assert_eq!(deployment.contract_template_id, contract_template_id);
-    assert_eq!(deployment.subnet_type, None);
-    assert_eq!(deployment.need_processing, true);
-    assert_eq!(
-        deployment.deployment_expenses.contract_initial_cycles,
-        TEST_CONTRACT_INITIAL_CYCLES
-    );
-    assert_eq!(
-        deployment.deployment_expenses.deployment_cycles_cost,
-        deployment_cfg.deployment_cycles_cost
-    );
-    assert_eq!(deployment.expenses_amount, buffer_amount - 4);
-    assert!(matches!(
-        deployment.state,
-        DeploymentState::TransferDeployerFundsToTransitAccount
-    ));
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex),
-        buffer_amount - 3
+
+    // allowance (buffer-4) < balance (buffer-3) → expenses_amount is capped at allowance min = buffer_amount - 4
+    // balance is NOT consumed at this stage, so it remains buffer_amount - 3
+    ht_assert_deployment_fields(
+        &deployment,
+        deployer,
+        contract_template_id,
+        None,
+        TEST_CONTRACT_INITIAL_CYCLES,
+        deployment_cfg.deployment_cycles_cost,
+        buffer_amount - 4,
+        &approved_account_hex,
+        buffer_amount - 3,
     );
 }
 

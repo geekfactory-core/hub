@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use candid::Principal;
 use common_canister_impl::components::ledger::to_account_identifier;
 use common_canister_types::{LedgerAccount, TimestampMillis};
@@ -216,6 +214,60 @@ pub(crate) fn ht_fund_deployer_account(
 
 // ─── Assertion helpers ────────────────────────────────────────────────────────
 
+/// Low-level assertion helper: validates the core fields of a deployment response.
+///
+/// Unlike [`ht_assert_deploying_result`], this takes raw parameters and an explicit
+/// `expected_balance` so it can be used in buffer tests where balance ≠ expenses_amount.
+///
+/// Checks:
+/// - `deployment.deployment_id == 0`
+/// - deployer, contract_template_id, subnet_type, need_processing
+/// - deployment_expenses.contract_initial_cycles and deployment_cycles_cost
+/// - expenses_amount == expected_expenses_amount
+/// - state is `TransferDeployerFundsToTransitAccount`
+/// - approved account balance == expected_balance
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn ht_assert_deployment_fields(
+    deployment: &DeploymentInformation,
+    deployer: Principal,
+    contract_template_id: ContractTemplateId,
+    subnet_type: Option<String>,
+    contract_initial_cycles: u128,
+    expected_deployment_cycles_cost: u128,
+    expected_expenses_amount: u64,
+    approved_account_hex: &str,
+    expected_balance: u64,
+) {
+    assert_eq!(deployment.deployment_id, 0);
+    assert_eq!(deployment.deployer, deployer);
+    assert_eq!(deployment.contract_template_id, contract_template_id);
+    assert_eq!(deployment.subnet_type, subnet_type);
+    assert_eq!(deployment.need_processing, true);
+    assert_eq!(
+        deployment.deployment_expenses.contract_initial_cycles,
+        contract_initial_cycles
+    );
+    assert_eq!(
+        deployment.deployment_expenses.deployment_cycles_cost,
+        expected_deployment_cycles_cost
+    );
+    assert_eq!(deployment.expenses_amount, expected_expenses_amount);
+    assert!(
+        matches!(
+            deployment.state,
+            DeploymentState::TransferDeployerFundsToTransitAccount
+        ),
+        "expected TransferDeployerFundsToTransitAccount, got {:?}",
+        deployment.state
+    );
+
+    use crate::test::tests::components::ledger::ht_get_account_balance;
+    assert_eq!(
+        ht_get_account_balance(approved_account_hex.to_string()),
+        expected_balance
+    );
+}
+
 /// Asserts the standard set of fields on a freshly-created [`DeployingResult`].
 ///
 /// Checks:
@@ -232,34 +284,17 @@ pub(crate) fn ht_assert_deploying_result(
     contract_initial_cycles: u128,
     approved_account_hex: &str,
 ) {
-    assert_eq!(dr.deployment_id, 0);
-    assert_eq!(dr.deployment.deployer, dr.deployer);
-    assert_eq!(dr.deployment.contract_template_id, contract_template_id);
-    assert_eq!(dr.deployment.subnet_type, subnet_type);
-    assert_eq!(dr.deployment.need_processing, true);
     assert_eq!(dr.deployment.approved_account, dr.approved_account);
-    assert_eq!(
-        dr.deployment.deployment_expenses.contract_initial_cycles,
-        contract_initial_cycles
-    );
-    assert_eq!(
-        dr.deployment.deployment_expenses.deployment_cycles_cost,
-        dr.config.deployment_cycles_cost
-    );
-    assert_eq!(dr.deployment.expenses_amount, dr.expenses_amount);
-    assert!(
-        matches!(
-            dr.deployment.state,
-            DeploymentState::TransferDeployerFundsToTransitAccount
-        ),
-        "expected TransferDeployerFundsToTransitAccount, got {:?}",
-        dr.deployment.state
-    );
-
-    use crate::test::tests::components::ledger::ht_get_account_balance;
-    assert_eq!(
-        ht_get_account_balance(approved_account_hex.to_string()),
-        dr.expenses_amount
+    ht_assert_deployment_fields(
+        &dr.deployment,
+        dr.deployer,
+        contract_template_id,
+        subnet_type,
+        contract_initial_cycles,
+        dr.config.deployment_cycles_cost,
+        dr.expenses_amount,
+        approved_account_hex,
+        dr.expenses_amount,
     );
 }
 
@@ -463,6 +498,7 @@ pub(crate) async fn ht_drive_to_deploying(
 }
 
 /// Drives an existing deployment all the way to the **Finalized** state.
+#[allow(dead_code)]
 ///
 /// The function processes every deployment step by:
 /// 1. Advancing the test time to just past the lock expiration.

@@ -17,8 +17,8 @@ fn test_round_e8s_ceil() {
     assert_eq!(round_e8s_ceil(123456789, 9), None);
 }
 
-#[tokio::test]
-async fn test_deployment_expenses_calculator_expenses() {
+#[test]
+fn test_deployment_expenses_calculator_expenses() {
     let calculator = DeploymentExpensesCalculator::new(DeploymentExpenses {
         contract_initial_cycles: 1_000_000,
         deployment_cycles_cost: 50_000,
@@ -42,8 +42,8 @@ async fn test_deployment_expenses_calculator_expenses() {
     assert_eq!(calculator.get_deployment_expenses_amount().unwrap(), 66);
 }
 
-#[tokio::test]
-async fn test_deployment_expenses_calculator_round() {
+#[test]
+fn test_deployment_expenses_calculator_round() {
     let deployment_expenses = DeploymentExpenses {
         amount_buffer_permyriad: 0,
         amount_decimal_places: 0,
