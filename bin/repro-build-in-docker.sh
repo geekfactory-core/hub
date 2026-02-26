@@ -6,10 +6,6 @@ set -euo pipefail
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 MODULE=hub
-ADDITIONAL_DOCKER_ARGS=""
-if [[ ${1:-} == test ]]; then
-  ADDITIONAL_DOCKER_ARGS="--build-arg RELEASE_TARGET=test"
-fi
 
 LIMACTL_IS_STARTED_BY_SCRIPT=0
 # Check if the operating system is macOS
@@ -55,7 +51,7 @@ fi
 HOST_TARGET_DIR=target/release/reproducible
 mkdir -p $HOST_TARGET_DIR
 header "Building $MODULE with Docker"
-docker build $ADDITIONAL_DOCKER_ARGS --progress=plain --build-context module=../${MODULE} -t reprocanister .
+docker build ${ADDITIONAL_DOCKER_ARGS:-} --progress=plain --build-context module=$(pwd) -t reprocanister .
 docker create --name tmp-reprocontainer reprocanister
 docker cp tmp-reprocontainer:/canister/${MODULE}/target/wasm32-unknown-unknown/release/${MODULE}_canister_impl-opt.wasm $HOST_TARGET_DIR
 docker cp tmp-reprocontainer:/canister/${MODULE}/target/wasm32-unknown-unknown/release/${MODULE}_assets_backend.wasm $HOST_TARGET_DIR
