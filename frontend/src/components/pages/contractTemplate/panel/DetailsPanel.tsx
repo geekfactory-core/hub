@@ -29,6 +29,7 @@ export const DetailsPanel = () => {
                 <PanelHeader title={i18.contractTemplate.details.panelDescription} />
                 <Flex vertical gap={8}>
                     <KeyValueVertical label={i18.contractTemplate.details.status.title} value={<StatusValue />} />
+                    <KeyValueVertical label={i18.contractTemplate.details.deploymentAvailable.title} value={<DeploymentAvailableValue />} />
                     <KeyValueVertical
                         label={i18.contractTemplate.details.certificateDuration}
                         value={
@@ -104,4 +105,26 @@ const StatusValue = () => {
         );
     }
     return i18.contractTemplate.details.status.active;
+};
+
+const DeploymentAvailableValue = () => {
+    const {retiredData, dataAvailability} = useContractTemplateContextSafe();
+
+    const contractTemplateBlocked = dataAvailability.type == 'blocked';
+    if (contractTemplateBlocked) {
+        return <span>{i18.contractTemplate.details.deploymentAvailable.no}</span>;
+    }
+
+    const isRetired = retiredData?.type === 'retired';
+    if (isRetired) {
+        return (
+            <span>
+                {`${i18.contractTemplate.details.deploymentAvailable.no} `}
+                <span className="gf-ant-color-secondary">
+                    <QuestionPopover content={retiredData.reason} title={i18.contractTemplate.details.deploymentAvailable.modal.retired.title} />
+                </span>
+            </span>
+        );
+    }
+    return i18.contractTemplate.details.deploymentAvailable.yes;
 };

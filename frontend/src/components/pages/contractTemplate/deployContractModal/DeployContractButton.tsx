@@ -15,13 +15,17 @@ import {DeployContractModalDataProvider} from './DeployContractModalDataProvider
 type Props = {
     targetContractTemplateId: bigint;
     contractTemplateBlocked: boolean;
+    contractTemplateRetired: boolean;
 };
 
 export const DeployContractButton = (props: Props) => {
-    const {targetContractTemplateId, contractTemplateBlocked} = props;
+    const {targetContractTemplateId, contractTemplateBlocked, contractTemplateRetired} = props;
 
     if (contractTemplateBlocked) {
         return <ContractTemplateBlockedButton />;
+    }
+    if (contractTemplateRetired) {
+        return <ContractTemplateRetiredButton />;
     }
     return <DeployButton targetContractTemplateId={targetContractTemplateId} />;
 };
@@ -83,4 +87,8 @@ const ModalContent = ({targetContractTemplateId, onCancelModal}: {targetContract
 
 const ContractTemplateBlockedButton = () => {
     return <DefaultButton disabled>{i18.contractTemplate.action.deploy.blocked}</DefaultButton>;
+};
+
+const ContractTemplateRetiredButton = () => {
+    return <DefaultButton disabled>{i18.contractTemplate.action.deploy.retired}</DefaultButton>;
 };

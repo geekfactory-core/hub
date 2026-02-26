@@ -125,10 +125,12 @@ export interface ContractTemplateInformation {
   'definition' : ContractTemplateDefinition,
   'contract_template_id' : bigint,
   'registered' : bigint,
+  'retired' : [] | [Timestamped],
 }
 export interface ContractTemplatesFilter {
   'blocked' : [] | [boolean],
   'filter' : [] | [string],
+  'retired' : [] | [boolean],
 }
 export type ContractTemplatesSortingKey = { 'DeploymentsCount' : null } |
   { 'ContractTemplateId' : null } |
@@ -160,6 +162,7 @@ export type DeployContractError = {
     'GetIcpXdrConversionRateError' : { 'reason' : string }
   } |
   { 'InsufficientApprovedAccountAllowance' : null } |
+  { 'ContractTemplateRetired' : null } |
   { 'ActiveDeploymentExists' : ProcessDeploymentResult } |
   { 'DeploymentUnavailable' : null } |
   { 'ContractTemplateNotFound' : null } |
@@ -421,7 +424,13 @@ export interface HubEvent {
   'event' : HubEventType,
   'caller' : Principal,
 }
-export type HubEventType = { 'ConfigSet' : GetConfigResult } |
+export type HubEventType = {
+    'ContractTemplateRetired' : {
+      'contract_template_id' : bigint,
+      'retired' : boolean,
+    }
+  } |
+  { 'ConfigSet' : GetConfigResult } |
   { 'ContractTemplateBlocked' : GetContractTemplateArgs } |
   { 'AccessRightsSet' : GetAccessRightsResult } |
   { 'ContractTemplateAdded' : GetContractTemplateArgs };
@@ -484,6 +493,7 @@ export interface ObtainContractCertificateResult {
   'certificate' : SignedContractCertificate,
 }
 export type Permission = { 'AddContractTemplate' : null } |
+  { 'RetireContractTemplate' : null } |
   { 'BlockContractTemplate' : null } |
   { 'SetAccessRights' : null } |
   { 'SetConfig' : null };
@@ -511,6 +521,16 @@ export type SetConfigError = { 'WrongConfig' : { 'reason' : string } } |
   { 'PermissionDenied' : null };
 export type SetConfigResponse = { 'Ok' : null } |
   { 'Err' : SetConfigError };
+export interface SetContractTemplateRetiredArgs {
+  'contract_template_id' : bigint,
+  'reason' : [] | [string],
+}
+export type SetContractTemplateRetiredError = {
+    'ContractTemplateNotFound' : null
+  } |
+  { 'PermissionDenied' : null };
+export type SetContractTemplateRetiredResponse = { 'Ok' : null } |
+  { 'Err' : SetContractTemplateRetiredError };
 export interface SetUploadWasmGrantArgs { 'grant' : [] | [UploadWasmGrant] }
 export type SetUploadWasmGrantError = { 'PermissionDenied' : null } |
   { 'WasmLengthIsTooBig' : null };
@@ -629,6 +649,10 @@ export interface _SERVICE {
     SetAccessRightsResponse
   >,
   'set_config' : ActorMethod<[SetConfigArgs], SetConfigResponse>,
+  'set_contract_template_retired' : ActorMethod<
+    [SetContractTemplateRetiredArgs],
+    SetContractTemplateRetiredResponse
+  >,
   'set_upload_wasm_grant' : ActorMethod<
     [SetUploadWasmGrantArgs],
     SetUploadWasmGrantResponse

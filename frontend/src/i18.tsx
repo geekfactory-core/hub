@@ -112,7 +112,8 @@ const rawI18 = {
         action: {
             deploy: {
                 available: 'Deploy',
-                blocked: 'Blocked',
+                blocked: 'Deploy',
+                retired: 'Deploy',
                 tooltip: {
                     deploymentUnavailable: 'Deployment is currently unavailable'
                 }
@@ -139,7 +140,15 @@ const rawI18 = {
             sourceUrl: 'URL',
             sourceTag: 'Tag',
             wasmHash: 'WASM Hash',
-            activationRequired: 'Activation Required'
+            activationRequired: 'Activation Required',
+            deploymentAvailable: {
+                title: 'Deployment Available',
+                yes: 'Yes',
+                no: 'No',
+                modal: {
+                    retired: {title: 'Reason'}
+                }
+            }
         },
         viewDeployments: 'Contracts',
         deployModal: {
@@ -174,8 +183,7 @@ const rawI18 = {
             resetButton: 'Reset',
             filter: {
                 all: 'All',
-                active: 'Active',
-                blocked: 'Blocked'
+                available: 'Available'
             },
             sorting: {
                 newest: 'Newest',

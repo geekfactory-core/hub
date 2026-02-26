@@ -1,4 +1,4 @@
-import {isNullish, toNullable} from '@dfinity/utils';
+import {isNullish, nonNullish, toNullable} from '@dfinity/utils';
 import type {TablePaginationConfig} from 'antd';
 import {useDefaultPaginationConfig} from 'frontend/src/hook/useDefaultPaginationConfig';
 import {
@@ -29,9 +29,9 @@ const formRules = {
     filterMaxLength: 30
 };
 
-export type ContractTemplateStateType = 'all' | 'active' | 'blocked';
-const allContractTemplateStateTypes = unionToArray<ContractTemplateStateType>()('all', 'active', 'blocked');
-export const CONTRACT_TEMPLATE_STATE_DEFAULT_VALUE: ContractTemplateStateType = 'active';
+export type ContractTemplateStateType = 'all' | 'available';
+const allContractTemplateStateTypes = unionToArray<ContractTemplateStateType>()('all', 'available');
+export const CONTRACT_TEMPLATE_STATE_DEFAULT_VALUE: ContractTemplateStateType = 'available';
 
 type ContractTemplatesListState = {
     filter?: string;
@@ -161,10 +161,11 @@ const listParametersFilterToRestParameterFilter = (
     filterSafe: string | undefined,
     stateSafe: ContractTemplateStateType | undefined
 ): FetchChunkParameters['filter'] => {
-    const blocked: boolean | undefined = mapFormStateValueToBackendBlockedValue(stateSafe);
+    const {blocked, retired} = mapStateValueToBackendFilter(stateSafe);
     return {
         filter: toNullable(filterSafe),
-        blocked: toNullable(blocked)
+        blocked: toNullable(blocked),
+        retired: toNullable(retired)
     };
 };
 
@@ -188,18 +189,12 @@ const listParametersSortToRestParameterSorting = (
     };
 };
 
-const mapFormStateValueToBackendBlockedValue = (stateFilter: ContractTemplateStateType | undefined): boolean | undefined => {
-    if (isNullish(stateFilter)) {
-        return false;
+const mapStateValueToBackendFilter = (stateFilter: ContractTemplateStateType | undefined): {blocked?: boolean; retired?: boolean} => {
+    if (nonNullish(stateFilter) && stateFilter === 'all') {
+        return {};
     }
-    switch (stateFilter) {
-        case 'all':
-            return undefined;
-        case 'active':
-            return false;
-        case 'blocked':
-            return true;
-    }
+    // 'available' = not blocked AND not retired
+    return {blocked: false, retired: false};
 };
 
 export const getContractTemplatesStateValueSafe = (value: unknown): ContractTemplateStateType | undefined => getStateSafeValueFromPredefinedArray(value, allContractTemplateStateTypes);

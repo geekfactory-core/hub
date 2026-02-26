@@ -185,6 +185,7 @@ export const idlFactory = ({ IDL }) => {
   const DeployContractError = IDL.Variant({
     'GetIcpXdrConversionRateError' : IDL.Record({ 'reason' : IDL.Text }),
     'InsufficientApprovedAccountAllowance' : IDL.Null,
+    'ContractTemplateRetired' : IDL.Null,
     'ActiveDeploymentExists' : ProcessDeploymentResult,
     'DeploymentUnavailable' : IDL.Null,
     'ContractTemplateNotFound' : IDL.Null,
@@ -203,6 +204,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const Permission = IDL.Variant({
     'AddContractTemplate' : IDL.Null,
+    'RetireContractTemplate' : IDL.Null,
     'BlockContractTemplate' : IDL.Null,
     'SetAccessRights' : IDL.Null,
     'SetConfig' : IDL.Null,
@@ -352,6 +354,7 @@ export const idlFactory = ({ IDL }) => {
     'definition' : ContractTemplateDefinition,
     'contract_template_id' : IDL.Nat64,
     'registered' : IDL.Nat64,
+    'retired' : IDL.Opt(Timestamped),
   });
   const GetContractTemplateResult = IDL.Record({
     'contract_template' : ContractTemplateInformation,
@@ -379,6 +382,7 @@ export const idlFactory = ({ IDL }) => {
   const ContractTemplatesFilter = IDL.Record({
     'blocked' : IDL.Opt(IDL.Bool),
     'filter' : IDL.Opt(IDL.Text),
+    'retired' : IDL.Opt(IDL.Bool),
   });
   const ChunkDef = IDL.Record({ 'count' : IDL.Nat64, 'start' : IDL.Nat64 });
   const GetContractTemplatesArgs = IDL.Record({
@@ -524,6 +528,10 @@ export const idlFactory = ({ IDL }) => {
     'chunk_def' : ChunkDef,
   });
   const HubEventType = IDL.Variant({
+    'ContractTemplateRetired' : IDL.Record({
+      'contract_template_id' : IDL.Nat64,
+      'retired' : IDL.Bool,
+    }),
     'ConfigSet' : GetConfigResult,
     'ContractTemplateBlocked' : GetContractTemplateArgs,
     'AccessRightsSet' : GetAccessRightsResult,
@@ -606,6 +614,18 @@ export const idlFactory = ({ IDL }) => {
   const SetConfigResponse = IDL.Variant({
     'Ok' : IDL.Null,
     'Err' : SetConfigError,
+  });
+  const SetContractTemplateRetiredArgs = IDL.Record({
+    'contract_template_id' : IDL.Nat64,
+    'reason' : IDL.Opt(IDL.Text),
+  });
+  const SetContractTemplateRetiredError = IDL.Variant({
+    'ContractTemplateNotFound' : IDL.Null,
+    'PermissionDenied' : IDL.Null,
+  });
+  const SetContractTemplateRetiredResponse = IDL.Variant({
+    'Ok' : IDL.Null,
+    'Err' : SetContractTemplateRetiredError,
   });
   const UploadWasmGrant = IDL.Record({
     'operator' : IDL.Principal,
@@ -752,6 +772,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'set_config' : IDL.Func([SetConfigArgs], [SetConfigResponse], []),
+    'set_contract_template_retired' : IDL.Func(
+        [SetContractTemplateRetiredArgs],
+        [SetContractTemplateRetiredResponse],
+        [],
+      ),
     'set_upload_wasm_grant' : IDL.Func(
         [SetUploadWasmGrantArgs],
         [SetUploadWasmGrantResponse],

@@ -5,7 +5,7 @@ import {reusePromiseWrapper} from 'frontend/src/utils/core/promise/reusePromise'
 import {useMemo} from 'react';
 import type {ContractTemplateInformation, GetContractTemplateError} from 'src/declarations/hub/hub.did';
 import {apiLogger} from '../logger/logger';
-import {getContractTemplateBlockedData, type ContractTemplateBlockedData} from './contractUtils';
+import {getContractTemplateBlockedData, getContractTemplateRetiredData, type ContractTemplateBlockedData, type ContractTemplateRetiredData} from './contractUtils';
 
 type ContractTemplateInformationAvailability =
     | DataAvailability<{contractTemplateInformation: ContractTemplateInformation}>
@@ -18,6 +18,7 @@ type Context = {
     fetchContractTemplateInformation: () => Promise<void>;
 
     dataAvailability: ContractTemplateInformationAvailability;
+    retiredData: ContractTemplateRetiredData | undefined;
 };
 export const useContractTemplate = (contractTemplateId: bigint): Context => {
     const {call, data, responseError: contractTemplateInformationError, feature} = useICCanisterCallHubAnonymous('getContractTemplate');
@@ -35,6 +36,11 @@ export const useContractTemplate = (contractTemplateId: bigint): Context => {
     );
 
     const contractTemplateInformation = data?.contract_template;
+
+    const retiredData: ContractTemplateRetiredData | undefined = useMemo(
+        () => (nonNullish(contractTemplateInformation) ? getContractTemplateRetiredData(contractTemplateInformation) : undefined),
+        [contractTemplateInformation]
+    );
 
     const dataAvailability: ContractTemplateInformationAvailability = useMemo(() => {
         if (feature.status.loaded) {
@@ -58,8 +64,9 @@ export const useContractTemplate = (contractTemplateId: bigint): Context => {
             contractTemplateInformationError,
             feature,
             fetchContractTemplateInformation,
-            dataAvailability
+            dataAvailability,
+            retiredData
         }),
-        [contractTemplateInformation, contractTemplateInformationError, feature, fetchContractTemplateInformation, dataAvailability]
+        [contractTemplateInformation, contractTemplateInformationError, feature, fetchContractTemplateInformation, dataAvailability, retiredData]
     );
 };

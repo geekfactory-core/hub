@@ -127,8 +127,13 @@ type ContractTemplateInformation = record {
   definition : ContractTemplateDefinition;
   contract_template_id : nat64;
   registered : nat64;
+  retired : opt Timestamped;
 };
-type ContractTemplatesFilter = record { blocked : opt bool; filter : opt text };
+type ContractTemplatesFilter = record {
+  blocked : opt bool;
+  filter : opt text;
+  retired : opt bool;
+};
 type ContractTemplatesSortingKey = variant {
   DeploymentsCount;
   ContractTemplateId;
@@ -162,6 +167,7 @@ type DeployContractArgs = record {
 type DeployContractError = variant {
   GetIcpXdrConversionRateError : record { reason : text };
   InsufficientApprovedAccountAllowance;
+  ContractTemplateRetired;
   ActiveDeploymentExists : ProcessDeploymentResult;
   DeploymentUnavailable;
   ContractTemplateNotFound;
@@ -420,6 +426,10 @@ type HubEvent = record {
   caller : principal;
 };
 type HubEventType = variant {
+  ContractTemplateRetired : record {
+    contract_template_id : nat64;
+    retired : bool;
+  };
   ConfigSet : GetConfigResult;
   ContractTemplateBlocked : GetContractTemplateArgs;
   AccessRightsSet : GetAccessRightsResult;
@@ -486,6 +496,7 @@ type ObtainContractCertificateResult = record {
 };
 type Permission = variant {
   AddContractTemplate;
+  RetireContractTemplate;
   BlockContractTemplate;
   SetAccessRights;
   SetConfig;
@@ -512,6 +523,18 @@ type SetConfigError = variant {
   PermissionDenied;
 };
 type SetConfigResponse = variant { Ok; Err : SetConfigError };
+type SetContractTemplateRetiredArgs = record {
+  contract_template_id : nat64;
+  reason : opt text;
+};
+type SetContractTemplateRetiredError = variant {
+  ContractTemplateNotFound;
+  PermissionDenied;
+};
+type SetContractTemplateRetiredResponse = variant {
+  Ok;
+  Err : SetContractTemplateRetiredError;
+};
 type SetUploadWasmGrantArgs = record { grant : opt UploadWasmGrant };
 type SetUploadWasmGrantError = variant { PermissionDenied; WasmLengthIsTooBig };
 type SetUploadWasmGrantResponse = variant { Ok; Err : SetUploadWasmGrantError };
@@ -607,6 +630,9 @@ service : {
     );
   set_access_rights : (SetAccessRightsArgs) -> (SetAccessRightsResponse);
   set_config : (SetConfigArgs) -> (SetConfigResponse);
+  set_contract_template_retired : (SetContractTemplateRetiredArgs) -> (
+      SetContractTemplateRetiredResponse,
+    );
   set_upload_wasm_grant : (SetUploadWasmGrantArgs) -> (
       SetUploadWasmGrantResponse,
     );

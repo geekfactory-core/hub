@@ -1,6 +1,6 @@
 import {Flex, Typography} from 'antd';
 import {RouterPaths} from 'frontend/src/components/pages/skeleton/Router';
-import {getContractTemplateBlockedData} from 'frontend/src/context/contractTemplate/contractUtils';
+import {getContractTemplateBlockedData, getContractTemplateRetiredData} from 'frontend/src/context/contractTemplate/contractUtils';
 import {i18} from 'frontend/src/i18';
 import {memo, useMemo} from 'react';
 import {Link} from 'react-router-dom';
@@ -13,6 +13,7 @@ type Props = {
 export const ContractTemplatesListItem = memo((props: Props) => {
     const {item} = props;
     const contractTemplateBlocked = getContractTemplateBlockedData(item).type == 'blocked';
+    const contractTemplateRetired = getContractTemplateRetiredData(item).type == 'retired';
 
     const linkToContractTemplate = useMemo(() => RouterPaths.contractTemplate(item.contract_template_id.toString()), [item.contract_template_id]);
     const linkToDeployments = useMemo(() => RouterPaths.contractDeployments(item.contract_template_id.toString()), [item.contract_template_id]);
@@ -28,7 +29,7 @@ export const ContractTemplatesListItem = memo((props: Props) => {
                 <Typography.Paragraph className="gf-preWrap">{item.definition.short_description}</Typography.Paragraph>
             </Flex>
             <Flex wrap style={{columnGap: 24, rowGap: 8}} align="center">
-                <DeployContractButton targetContractTemplateId={item.contract_template_id} contractTemplateBlocked={contractTemplateBlocked} />
+                <DeployContractButton targetContractTemplateId={item.contract_template_id} contractTemplateBlocked={contractTemplateBlocked} contractTemplateRetired={contractTemplateRetired} />
                 <Link to={linkToContractTemplate} className="gf-underline gf-underline-hover">
                     {i18.contractTemplate.action.details}
                 </Link>

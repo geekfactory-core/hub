@@ -14,9 +14,11 @@ export const HeaderPanel = () => {
     const {
         contractTemplateId,
         contractTemplateInformation: {definition: contractTemplateDefinition, deployments_count: totalDeployments},
-        dataAvailability
+        dataAvailability,
+        retiredData
     } = useContractTemplateContextSafe();
     const contractTemplateBlocked = dataAvailability.type == 'blocked';
+    const contractTemplateRetired = retiredData?.type == 'retired';
 
     const linkPostfix = useMemo(() => ` (${formatNumber(totalDeployments)})`, [totalDeployments]);
 
@@ -26,7 +28,7 @@ export const HeaderPanel = () => {
                 <PanelHeader title={contractTemplateDefinition.name} />
                 <Typography.Paragraph className="gf-preWrap">{fromNullable(contractTemplateDefinition.long_description)}</Typography.Paragraph>
                 <Flex gap={24} align="center">
-                    <DeployContractButton targetContractTemplateId={contractTemplateId} contractTemplateBlocked={contractTemplateBlocked} />
+                    <DeployContractButton targetContractTemplateId={contractTemplateId} contractTemplateBlocked={contractTemplateBlocked} contractTemplateRetired={contractTemplateRetired} />
                     <Link to={RouterPaths.contractDeployments(contractTemplateId.toString())} className="gf-underline gf-underline-hover">
                         {`${i18.contractTemplate.viewDeployments}${linkPostfix}`}
                     </Link>
