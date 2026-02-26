@@ -3,46 +3,65 @@ import {isNonEmptyString, trimIfDefined} from './string';
 
 describe('String utilities', () => {
     describe('isNonEmptyString', () => {
-        it('should return true for non-empty strings', () => {
-            expect(isNonEmptyString('hello')).toBe(true);
-            expect(isNonEmptyString('a')).toBe(true);
-            expect(isNonEmptyString(' ')).toBe(true);
+        it.each([
+            {label: '"hello"', input: 'hello'},
+            {label: '"a"', input: 'a'},
+            {label: 'space', input: ' '}
+        ])('returns true for non-empty string $label', ({input}) => {
+            expect(isNonEmptyString(input)).toBe(true);
         });
 
-        it('should return false for empty strings', () => {
+        it('returns false for empty string', () => {
             expect(isNonEmptyString('')).toBe(false);
         });
 
-        it('should return false for non-string values', () => {
-            expect(isNonEmptyString(null)).toBe(false);
-            expect(isNonEmptyString(undefined)).toBe(false);
-            expect(isNonEmptyString(123)).toBe(false);
-            expect(isNonEmptyString({})).toBe(false);
-            expect(isNonEmptyString([])).toBe(false);
-            expect(isNonEmptyString(true)).toBe(false);
+        it.each([
+            {label: 'null', input: null},
+            {label: 'undefined', input: undefined},
+            {label: 'number', input: 123},
+            {label: 'object', input: {}},
+            {label: 'array', input: []},
+            {label: 'boolean', input: true}
+        ] as const)('returns false for non-string value: $label', ({input}) => {
+            expect(isNonEmptyString(input)).toBe(false);
+        });
+
+        it('narrows type to string', () => {
+            expect.assertions(1);
+            const value: unknown = 'hello';
+            if (isNonEmptyString(value)) {
+                const _narrowed: string = value;
+                expect(_narrowed).toBe('hello');
+            }
         });
     });
 
     describe('trimIfDefined', () => {
-        it('should return trimmed string for valid non-empty strings', () => {
-            expect(trimIfDefined('  hello  ')).toBe('hello');
-            expect(trimIfDefined('world')).toBe('world');
-            expect(trimIfDefined(' a ')).toBe('a');
+        it.each([
+            {label: '"  hello  "', input: '  hello  ', expected: 'hello'},
+            {label: '"world"', input: 'world', expected: 'world'},
+            {label: '" a "', input: ' a ', expected: 'a'}
+        ])('returns trimmed string for $label', ({input, expected}) => {
+            expect(trimIfDefined(input)).toBe(expected);
         });
 
-        it('should return undefined for strings that become empty after trimming', () => {
-            expect(trimIfDefined('   ')).toBeUndefined();
-            expect(trimIfDefined('')).toBeUndefined();
-            expect(trimIfDefined('\t\n')).toBeUndefined();
+        it.each([
+            {label: 'spaces only', input: '   '},
+            {label: 'empty string', input: ''},
+            {label: 'tab+newline', input: '\t\n'}
+        ])('returns undefined for whitespace-only string: $label', ({input}) => {
+            expect(trimIfDefined(input)).toBeUndefined();
         });
 
-        it('should return undefined for non-string values', () => {
-            expect(trimIfDefined(null)).toBeUndefined();
-            expect(trimIfDefined(undefined)).toBeUndefined();
-            expect(trimIfDefined(123)).toBeUndefined();
-            expect(trimIfDefined({})).toBeUndefined();
-            expect(trimIfDefined([])).toBeUndefined();
-            expect(trimIfDefined(true)).toBeUndefined();
+        it.each([
+            {label: 'null', input: null},
+            {label: 'undefined', input: undefined},
+            {label: 'number', input: 123},
+            {label: 'object', input: {}},
+            {label: 'array', input: []},
+            {label: 'boolean', input: true}
+        ] as const)('returns undefined for non-string value: $label', ({input}) => {
+            expect(trimIfDefined(input)).toBeUndefined();
         });
     });
 });

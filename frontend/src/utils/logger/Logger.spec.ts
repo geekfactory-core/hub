@@ -11,28 +11,28 @@ describe('Logger', () => {
     });
 
     describe('constructor', () => {
-        it('should create logger with default prefix', () => {
+        it('creates logger with default prefix', () => {
             const defaultLogger = new Logger();
             defaultLogger.log('test');
             const messages = defaultLogger.getAllMessages();
             expect(messages[0].prefix).toBe('');
         });
 
-        it('should create logger with custom prefix', () => {
+        it('creates logger with custom prefix', () => {
             const customLogger = new Logger('Custom');
             customLogger.log('test');
             const messages = customLogger.getAllMessages();
             expect(messages[0].prefix).toBe('Custom');
         });
 
-        it('should trim and join multiple prefix parts', () => {
+        it('trims and joins multiple prefix parts', () => {
             const customLogger = new Logger('  Part1  Part2  ');
             customLogger.log('test');
             const messages = customLogger.getAllMessages();
             expect(messages[0].prefix).toBe('Part1  Part2');
         });
 
-        it('should accept custom maxMessages option', () => {
+        it('accepts custom maxMessages option', () => {
             const smallLogger = new Logger('Small', {maxMessages: 5});
             for (let i = 0; i < 10; i++) {
                 smallLogger.log(`message ${i}`);
@@ -41,46 +41,27 @@ describe('Logger', () => {
             expect(messages.length).toBe(5);
         });
 
-        it('should use default maxMessages of 100000', () => {
+        it('uses default maxMessages of 100000', () => {
             const defaultLogger = new Logger();
             expect(defaultLogger['storage'].maxMessages).toBe(100000);
         });
     });
 
     describe('logging methods', () => {
-        it('should log debug messages', () => {
-            logger.debug('debug message');
+        it.each([
+            {method: 'debug' as const, level: 'debug', message: 'debug message'},
+            {method: 'log' as const, level: 'log', message: 'info message'},
+            {method: 'warn' as const, level: 'warn', message: 'warn message'},
+            {method: 'error' as const, level: 'error', message: 'error message'}
+        ])('logs $method level correctly', ({method, level, message}) => {
+            logger[method](message);
             const messages = logger.getAllMessages();
             expect(messages).toHaveLength(1);
-            expect(messages[0].level).toBe('debug');
-            expect(messages[0].message).toBe('debug message');
+            expect(messages[0].level).toBe(level);
+            expect(messages[0].message).toBe(message);
         });
 
-        it('should log info messages', () => {
-            logger.log('info message');
-            const messages = logger.getAllMessages();
-            expect(messages).toHaveLength(1);
-            expect(messages[0].level).toBe('log');
-            expect(messages[0].message).toBe('info message');
-        });
-
-        it('should log warn messages', () => {
-            logger.warn('warn message');
-            const messages = logger.getAllMessages();
-            expect(messages).toHaveLength(1);
-            expect(messages[0].level).toBe('warn');
-            expect(messages[0].message).toBe('warn message');
-        });
-
-        it('should log error messages', () => {
-            logger.error('error message');
-            const messages = logger.getAllMessages();
-            expect(messages).toHaveLength(1);
-            expect(messages[0].level).toBe('error');
-            expect(messages[0].message).toBe('error message');
-        });
-
-        it('should log messages with additional arguments', () => {
+        it('logs messages with additional arguments', () => {
             const obj = {key: 'value'};
             const arr = [1, 2, 3];
             logger.log('message with args', obj, arr);
@@ -88,7 +69,7 @@ describe('Logger', () => {
             expect(messages[0].args).toEqual([obj, arr]);
         });
 
-        it('should include timestamp in log entries', () => {
+        it('includes timestamp in log entries', () => {
             const before = Date.now();
             logger.log('test');
             const after = Date.now();
@@ -97,13 +78,13 @@ describe('Logger', () => {
             expect(messages[0].timestampMillis).toBeLessThanOrEqual(after);
         });
 
-        it('should include prefix in log entries', () => {
+        it('includes prefix in log entries', () => {
             logger.log('test');
             const messages = logger.getAllMessages();
             expect(messages[0].prefix).toBe('TestLogger');
         });
 
-        it('should assign unique uid to each log entry', () => {
+        it('assigns unique uid to each log entry', () => {
             logger.log('first');
             logger.log('second');
             logger.log('third');
@@ -115,13 +96,13 @@ describe('Logger', () => {
     });
 
     describe('includeCallerLocation option', () => {
-        it('should not include caller location by default', () => {
+        it('does not include caller location by default', () => {
             logger.log('test');
             const messages = logger.getAllMessages();
             expect(messages[0].message).toBe('test');
         });
 
-        it('should include caller location when option is enabled', () => {
+        it('includes caller location when option is enabled', () => {
             const loggerWithLocation = new Logger('Test', {includeCallerLocation: true});
             loggerWithLocation.log('test');
             const messages = loggerWithLocation.getAllMessages();
@@ -131,7 +112,7 @@ describe('Logger', () => {
     });
 
     describe('storage management', () => {
-        it('should store messages up to maxMessages limit', () => {
+        it('stores messages up to maxMessages limit', () => {
             const smallLogger = new Logger('Small', {maxMessages: 3});
             smallLogger.log('msg1');
             smallLogger.log('msg2');
@@ -140,7 +121,7 @@ describe('Logger', () => {
             expect(messages).toHaveLength(3);
         });
 
-        it('should overwrite oldest messages when exceeding maxMessages', () => {
+        it('overwrites oldest messages when exceeding maxMessages', () => {
             const smallLogger = new Logger('Small', {maxMessages: 3});
             smallLogger.log('msg1');
             smallLogger.log('msg2');
@@ -154,7 +135,7 @@ describe('Logger', () => {
             expect(messages[2].message).toBe('msg5');
         });
 
-        it('should maintain correct order when circular buffer wraps', () => {
+        it('maintains correct order when circular buffer wraps', () => {
             const smallLogger = new Logger('Small', {maxMessages: 3});
             for (let i = 1; i <= 10; i++) {
                 smallLogger.log(`msg${i}`);
@@ -166,7 +147,7 @@ describe('Logger', () => {
             expect(messages[2].message).toBe('msg10');
         });
 
-        it('should clear all messages', () => {
+        it('clears all messages', () => {
             logger.log('msg1');
             logger.log('msg2');
             expect(logger.getAllMessages()).toHaveLength(2);
@@ -174,7 +155,7 @@ describe('Logger', () => {
             expect(logger.getAllMessages()).toHaveLength(0);
         });
 
-        it('should reset uid counter when clearing', () => {
+        it('resets uid counter when clearing', () => {
             logger.log('msg1');
             logger.log('msg2');
             logger.clear();
@@ -185,14 +166,14 @@ describe('Logger', () => {
     });
 
     describe('createChild', () => {
-        it('should create child logger with combined prefix', () => {
+        it('creates child logger with combined prefix', () => {
             const child = logger.createChild('Child');
             child.log('test');
             const messages = child.getAllMessages();
             expect(messages[0].prefix).toBe('TestLogger Child');
         });
 
-        it('should share storage with parent', () => {
+        it('shares storage with parent', () => {
             const child = logger.createChild('Child');
             logger.log('parent message');
             child.log('child message');
@@ -200,7 +181,7 @@ describe('Logger', () => {
             expect(child.getAllMessages()).toHaveLength(2);
         });
 
-        it('should share dispatcher with parent by default', () => {
+        it('shares dispatcher with parent by default', () => {
             const listener = vi.fn();
             logger.addListener(listener);
             const child = logger.createChild('Child');
@@ -208,7 +189,7 @@ describe('Logger', () => {
             expect(listener).toHaveBeenCalledTimes(1);
         });
 
-        it('should create separate dispatcher when useSameDispatcher is false', () => {
+        it('creates separate dispatcher when useSameDispatcher is false', () => {
             const parentListener = vi.fn();
             const childListener = vi.fn();
             logger.addListener(parentListener);
@@ -219,7 +200,7 @@ describe('Logger', () => {
             expect(childListener).toHaveBeenCalledTimes(1);
         });
 
-        it('should support nested child loggers', () => {
+        it('supports nested child loggers', () => {
             const child = logger.createChild('Child');
             const grandchild = child.createChild('Grandchild');
             grandchild.log('test');
@@ -227,7 +208,7 @@ describe('Logger', () => {
             expect(messages[0].prefix).toBe('TestLogger Child Grandchild');
         });
 
-        it('should handle includeCallerLocation option in child logger', () => {
+        it('handles includeCallerLocation option in child logger', () => {
             const child = logger.createChild('Child', {includeCallerLocation: true});
             child.log('test');
             const messages = child.getAllMessages();
@@ -235,7 +216,7 @@ describe('Logger', () => {
             expect(messages[0].message).toContain('Logger.spec.ts');
         });
 
-        it('should trim empty prefix parts', () => {
+        it('trims empty prefix parts', () => {
             const emptyLogger = new Logger('');
             const child = emptyLogger.createChild('Child');
             child.log('test');
@@ -245,7 +226,7 @@ describe('Logger', () => {
     });
 
     describe('listeners', () => {
-        it('should add and trigger listener', () => {
+        it('adds and triggers listener', () => {
             const listener = vi.fn();
             logger.addListener(listener);
             logger.log('test');
@@ -259,7 +240,7 @@ describe('Logger', () => {
             );
         });
 
-        it('should support multiple listeners', () => {
+        it('supports multiple listeners', () => {
             const listener1 = vi.fn();
             const listener2 = vi.fn();
             logger.addListener(listener1);
@@ -269,7 +250,7 @@ describe('Logger', () => {
             expect(listener2).toHaveBeenCalledTimes(1);
         });
 
-        it('should remove listener', () => {
+        it('removes listener', () => {
             const listener = vi.fn();
             logger.addListener(listener);
             logger.log('test1');
@@ -278,12 +259,12 @@ describe('Logger', () => {
             expect(listener).toHaveBeenCalledTimes(1);
         });
 
-        it('should not fail when removing non-existent listener', () => {
+        it('does not fail when removing non-existent listener', () => {
             const listener = vi.fn();
             expect(() => logger.removeListener(listener)).not.toThrow();
         });
 
-        it('should catch and log listener errors', () => {
+        it('catches and logs listener errors without stopping other listeners', () => {
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
             const errorListener = vi.fn(() => {
                 throw new Error('Listener error');
@@ -299,7 +280,7 @@ describe('Logger', () => {
             consoleErrorSpy.mockRestore();
         });
 
-        it('should not add duplicate listener', () => {
+        it('does not add duplicate listener', () => {
             const listener = vi.fn();
             logger.addListener(listener);
             logger.addListener(listener);
@@ -309,7 +290,7 @@ describe('Logger', () => {
     });
 
     describe('toJSON', () => {
-        it('should serialize all log entries', () => {
+        it('serializes all log entries', () => {
             logger.log('msg1');
             logger.warn('msg2');
             logger.error('msg3');
@@ -321,7 +302,7 @@ describe('Logger', () => {
             });
         });
 
-        it('should use custom serializer when provided', () => {
+        it('uses custom serializer when provided', () => {
             logger.log('test');
             const serializer = (entry: LogEntry) => ({
                 custom: entry.level,
@@ -334,14 +315,14 @@ describe('Logger', () => {
             });
         });
 
-        it('should return empty array when no messages', () => {
+        it('returns empty array when no messages', () => {
             const json = logger.toJSON();
             expect(json).toEqual([]);
         });
     });
 
     describe('safeSerializeLogEntry', () => {
-        it('should serialize log entry safely', () => {
+        it('serializes log entry safely', () => {
             logger.log('test', {key: 'value'}, [1, 2, 3]);
             const entries = logger.getAllMessages();
             const serialized = safeSerializeLogEntry(entries[0]);
@@ -355,7 +336,7 @@ describe('Logger', () => {
             });
         });
 
-        it('should handle complex objects in args', () => {
+        it('handles complex objects in args', () => {
             const complexObj = {
                 bigint: 123n,
                 uint8: new Uint8Array([1, 2, 3]),
@@ -371,7 +352,7 @@ describe('Logger', () => {
             expect(serialized.args[0]).toContain('Set');
         });
 
-        it('should handle circular references in args', () => {
+        it('handles circular references in args', () => {
             const circular: any = {a: 1};
             circular.self = circular;
             logger.log('test', circular);
@@ -389,59 +370,25 @@ describe('Logger', () => {
             vi.spyOn(console, 'error').mockImplementation(() => {});
         });
 
-        it('should log debug messages to console.debug', () => {
+        it.each([
+            {level: 'debug' as const, consoleFn: 'debug' as const, message: 'debug message', pattern: /DEBUG.*Test.*debug message/},
+            {level: 'log' as const, consoleFn: 'log' as const, message: 'log message', pattern: /LOG.*Test.*log message/},
+            {level: 'warn' as const, consoleFn: 'warn' as const, message: 'warn message', pattern: /WARN.*Test.*warn message/},
+            {level: 'error' as const, consoleFn: 'error' as const, message: 'error message', pattern: /ERROR.*Test.*error message/}
+        ])('routes $level to console.$consoleFn', ({level, consoleFn, message, pattern}) => {
             const entry: LogEntry = {
                 uid: 1,
-                level: 'debug',
+                level,
                 timestampMillis: Date.now(),
                 prefix: 'Test',
-                message: 'debug message',
+                message,
                 args: []
             };
             defaultListener(entry);
-            expect(console.debug).toHaveBeenCalledWith(expect.stringMatching(/DEBUG.*Test.*debug message/));
+            expect(console[consoleFn]).toHaveBeenCalledWith(expect.stringMatching(pattern));
         });
 
-        it('should log info messages to console.log', () => {
-            const entry: LogEntry = {
-                uid: 1,
-                level: 'log',
-                timestampMillis: Date.now(),
-                prefix: 'Test',
-                message: 'log message',
-                args: []
-            };
-            defaultListener(entry);
-            expect(console.log).toHaveBeenCalledWith(expect.stringMatching(/LOG.*Test.*log message/));
-        });
-
-        it('should log warn messages to console.warn', () => {
-            const entry: LogEntry = {
-                uid: 1,
-                level: 'warn',
-                timestampMillis: Date.now(),
-                prefix: 'Test',
-                message: 'warn message',
-                args: []
-            };
-            defaultListener(entry);
-            expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/WARN.*Test.*warn message/));
-        });
-
-        it('should log error messages to console.error', () => {
-            const entry: LogEntry = {
-                uid: 1,
-                level: 'error',
-                timestampMillis: Date.now(),
-                prefix: 'Test',
-                message: 'error message',
-                args: []
-            };
-            defaultListener(entry);
-            expect(console.error).toHaveBeenCalledWith(expect.stringMatching(/ERROR.*Test.*error message/));
-        });
-
-        it('should include timestamp in ISO format', () => {
+        it('includes timestamp in ISO format', () => {
             const timestamp = Date.now();
             const entry: LogEntry = {
                 uid: 1,
@@ -456,7 +403,7 @@ describe('Logger', () => {
             expect(console.log).toHaveBeenCalledWith(expect.stringContaining(expectedDate));
         });
 
-        it('should pass additional arguments to console', () => {
+        it('passes additional arguments to console', () => {
             const obj = {key: 'value'};
             const arr = [1, 2, 3];
             const entry: LogEntry = {
@@ -473,33 +420,33 @@ describe('Logger', () => {
     });
 
     describe('edge cases', () => {
-        it('should handle empty message', () => {
+        it('handles empty message', () => {
             logger.log('');
             const messages = logger.getAllMessages();
             expect(messages[0].message).toBe('');
         });
 
-        it('should handle message with special characters', () => {
+        it('handles message with special characters', () => {
             const specialMessage = 'Test\n\t"quoted"\r\nline🚨';
             logger.log(specialMessage);
             const messages = logger.getAllMessages();
             expect(messages[0].message).toBe(specialMessage);
         });
 
-        it('should handle null and undefined in args', () => {
+        it('handles null and undefined in args', () => {
             logger.log('test', null, undefined);
             const messages = logger.getAllMessages();
             expect(messages[0].args).toEqual([null, undefined]);
         });
 
-        it('should handle very long messages', () => {
+        it('handles very long messages', () => {
             const longMessage = 'a'.repeat(10000);
             logger.log(longMessage);
             const messages = logger.getAllMessages();
             expect(messages[0].message).toBe(longMessage);
         });
 
-        it('should handle rapid sequential logging', () => {
+        it('handles rapid sequential logging', () => {
             for (let i = 0; i < 1000; i++) {
                 logger.log(`message ${i}`);
             }
@@ -510,7 +457,7 @@ describe('Logger', () => {
     });
 
     describe('integration scenarios', () => {
-        it('should support parent-child listener propagation', () => {
+        it('propagates parent-child listener calls', () => {
             const parentListener = vi.fn();
             logger.addListener(parentListener);
             const child = logger.createChild('Child');
@@ -522,7 +469,7 @@ describe('Logger', () => {
             expect(calls[1][0].prefix).toBe('TestLogger Child');
         });
 
-        it('should handle mixed log levels', () => {
+        it('handles mixed log levels', () => {
             logger.debug('debug');
             logger.log('log');
             logger.warn('warn');
@@ -532,7 +479,7 @@ describe('Logger', () => {
             expect(messages.map((m) => m.level)).toEqual(['debug', 'log', 'warn', 'error']);
         });
 
-        it('should maintain separate storage across independent logger instances', () => {
+        it('maintains separate storage across independent logger instances', () => {
             const logger1 = new Logger('Logger1');
             const logger2 = new Logger('Logger2');
             logger1.log('test1');
@@ -543,7 +490,7 @@ describe('Logger', () => {
             expect(logger2.getAllMessages()[0].message).toBe('test2');
         });
 
-        it('should support clearing while maintaining listeners', () => {
+        it('supports clearing while maintaining listeners', () => {
             const listener = vi.fn();
             logger.addListener(listener);
             logger.log('before clear');

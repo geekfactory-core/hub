@@ -3,44 +3,40 @@ import {mergeClassName} from './domUtils';
 
 describe('domUtils', () => {
     describe('mergeClassName', () => {
-        it('should merge multiple class names', () => {
-            const result = mergeClassName('class1', 'class2', 'class3');
-            expect(result).toBe('class1 class2 class3');
+        it('returns empty string when called with no arguments', () => {
+            expect(mergeClassName()).toBe('');
         });
 
-        it('should handle undefined and null values', () => {
-            const result = mergeClassName('class1', undefined, 'class2', null, 'class3');
-            expect(result).toBe('class1 class2 class3');
+        it('returns empty string when all inputs are null, undefined, or empty', () => {
+            expect(mergeClassName(undefined, null, '', '  ')).toBe('');
         });
 
-        it('should handle empty strings', () => {
-            const result = mergeClassName('class1', '', 'class2');
-            expect(result).toBe('class1 class2');
+        it('merges multiple class names into a space-separated string', () => {
+            expect(mergeClassName('class1', 'class2', 'class3')).toBe('class1 class2 class3');
         });
 
-        it('should split multiple classes in a single string', () => {
-            const result = mergeClassName('class1 class2', 'class3 class4');
-            expect(result).toBe('class1 class2 class3 class4');
+        it('splits space-separated classes within a single argument', () => {
+            expect(mergeClassName('class1 class2', 'class3 class4')).toBe('class1 class2 class3 class4');
         });
 
-        it('should remove duplicate classes', () => {
-            const result = mergeClassName('class1', 'class2', 'class1', 'class1 class2', 'class3');
-            expect(result).toBe('class1 class2 class3');
+        it('removes duplicate class names', () => {
+            expect(mergeClassName('class1', 'class2', 'class1', 'class1 class2', 'class3')).toBe('class1 class2 class3');
         });
 
-        it('should handle whitespace and trim classes', () => {
-            const result = mergeClassName('  class1  ', '  class2  ');
-            expect(result).toBe('class1 class2');
+        it('trims whitespace from class names', () => {
+            expect(mergeClassName('  class1  ', '  class2  ')).toBe('class1 class2');
         });
 
-        it('should return empty string when all inputs are empty or null', () => {
-            const result = mergeClassName(undefined, null, '', '  ');
-            expect(result).toBe('');
+        it.each([
+            {label: 'null', args: ['class1', null, 'class2'] as Array<string | null | undefined>},
+            {label: 'undefined', args: ['class1', undefined, 'class2'] as Array<string | null | undefined>},
+            {label: 'empty string', args: ['class1', '', 'class2'] as Array<string | null | undefined>}
+        ])('filters out $label values', ({args}) => {
+            expect(mergeClassName(...args)).toBe('class1 class2');
         });
 
-        it('should handle mixed scenarios', () => {
-            const result = mergeClassName('class1 class2', undefined, 'class3', 'class1', null, '  class4  ');
-            expect(result).toBe('class1 class2 class3 class4');
+        it('handles a mix of valid, nullish, duplicate, and whitespace inputs', () => {
+            expect(mergeClassName('class1 class2', undefined, 'class3', 'class1', null, '  class4  ')).toBe('class1 class2 class3 class4');
         });
     });
 });

@@ -1,259 +1,144 @@
 import {describe, expect, it} from 'vitest';
 import type {ValueWithUnit} from '../../core/number/types';
-import {formatCyclesValueWithUnit, formatCyclesValueWithUnitByStrategy, formatIcpXdrConversionRateInTCyclesPerICP} from './format';
+import {formatCycles, formatCyclesValueWithUnit, formatCyclesValueWithUnitByStrategy, formatIcpXdrConversionRateInTCyclesPerICP} from './format';
 
 describe('cycles format utils', () => {
     describe('formatCyclesValueWithUnit', () => {
-        it('should format cycles with 12 decimal places by default', () => {
-            const valueWithUnit: ValueWithUnit = {value: 1.23456789012345, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('1.234567890123T');
+        it.each([
+            {label: '1.234... T (12 decimal places)', valueWithUnit: {value: 1.23456789012345, unit: 'T'} as ValueWithUnit, expected: '1.234567890123T'},
+            {label: '100 T', valueWithUnit: {value: 100, unit: 'T'} as ValueWithUnit, expected: '100T'},
+            {label: '123456.789 T (large)', valueWithUnit: {value: 123456.789, unit: 'T'} as ValueWithUnit, expected: '123 456.789T'},
+            {label: '0.000001 T (small)', valueWithUnit: {value: 0.000001, unit: 'T'} as ValueWithUnit, expected: '0.000001T'},
+            {label: '1234n T (bigint)', valueWithUnit: {value: 1234n, unit: 'T'} as ValueWithUnit, expected: '1 234T'},
+            {label: '1.5 T (trailing zeros trimmed)', valueWithUnit: {value: 1.5, unit: 'T'} as ValueWithUnit, expected: '1.5T'},
+            {label: '0 T', valueWithUnit: {value: 0, unit: 'T'} as ValueWithUnit, expected: '0T'},
+            {label: '-123.456 T (negative)', valueWithUnit: {value: -123.456, unit: 'T'} as ValueWithUnit, expected: '-123.456T'},
+            {label: '100 G', valueWithUnit: {value: 100, unit: 'G'} as ValueWithUnit, expected: '100G'},
+            {label: '50 M', valueWithUnit: {value: 50, unit: 'M'} as ValueWithUnit, expected: '50M'},
+            {label: '100 (empty unit)', valueWithUnit: {value: 100, unit: ''} as ValueWithUnit, expected: '100'}
+        ])('formats $label', ({valueWithUnit, expected}) => {
+            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe(expected);
         });
 
-        it('should format cycles without unit space', () => {
-            const valueWithUnit: ValueWithUnit = {value: 100, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('100T');
-        });
-
-        it('should handle undefined value', () => {
+        it('returns default fallback for undefined', () => {
             expect(formatCyclesValueWithUnit(undefined)).toBe('-');
         });
 
-        it('should respect custom decimalPlaces option', () => {
+        it('respects custom decimalPlaces option', () => {
             const valueWithUnit: ValueWithUnit = {value: 1.23456789, unit: 'T'};
             expect(formatCyclesValueWithUnit(valueWithUnit, {decimalPlaces: 4})).toBe('1.2346T');
         });
 
-        it('should respect custom fallback option', () => {
+        it('respects custom fallback option', () => {
             expect(formatCyclesValueWithUnit(undefined, {fallback: 'N/A'})).toBe('N/A');
-        });
-
-        it('should format large values correctly', () => {
-            const valueWithUnit: ValueWithUnit = {value: 123456.789, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('123 456.789T');
-        });
-
-        it('should format small values with many decimal places', () => {
-            const valueWithUnit: ValueWithUnit = {value: 0.000001, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('0.000001T');
-        });
-
-        it('should handle bigint values', () => {
-            const valueWithUnit: ValueWithUnit = {value: 1234n, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('1 234T');
-        });
-
-        it('should trim trailing zeros', () => {
-            const valueWithUnit: ValueWithUnit = {value: 1.5, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('1.5T');
-        });
-
-        it('should handle zero value', () => {
-            const valueWithUnit: ValueWithUnit = {value: 0, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('0T');
-        });
-
-        it('should handle negative values', () => {
-            const valueWithUnit: ValueWithUnit = {value: -123.456, unit: 'T'};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('-123.456T');
-        });
-
-        it('should work with different units', () => {
-            const valueWithUnit1: ValueWithUnit = {value: 100, unit: 'G'};
-            expect(formatCyclesValueWithUnit(valueWithUnit1)).toBe('100G');
-
-            const valueWithUnit2: ValueWithUnit = {value: 50, unit: 'M'};
-            expect(formatCyclesValueWithUnit(valueWithUnit2)).toBe('50M');
-        });
-
-        it('should handle empty unit', () => {
-            const valueWithUnit: ValueWithUnit = {value: 100, unit: ''};
-            expect(formatCyclesValueWithUnit(valueWithUnit)).toBe('100');
         });
     });
 
     describe('formatCyclesValueWithUnitByStrategy', () => {
-        describe('short strategy', () => {
-            it('should use 2 decimal places for values above 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.011, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('0.01T');
-            });
-
-            it('should use 2 decimal places for values equal to 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.01, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('0.01T');
-            });
-
-            it('should use 4 decimal places for values below 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.009999, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('0.01T');
-            });
-
-            it('should use 4 decimal places for values near zero', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.00123456, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('0.0012T');
-            });
-
-            it('should use 2 decimal places for large values', () => {
-                const valueWithUnit: ValueWithUnit = {value: 123.456789, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('123.46T');
-            });
-
-            it('should handle exactly 0.01T threshold', () => {
-                const valueWithUnit1: ValueWithUnit = {value: 0.0100001, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit1, 'short')).toBe('0.01T');
-
-                const valueWithUnit2: ValueWithUnit = {value: 0.0099999, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit2, 'short')).toBe('0.01T');
-            });
+        it.each([
+            {label: 'above 0.01T', value: 0.011, expected: '0.01T'},
+            {label: 'equal 0.01T', value: 0.01, expected: '0.01T'},
+            {label: 'just below 0.01', value: 0.009999, expected: '0.01T'},
+            {label: 'near-zero', value: 0.00123456, expected: '0.0012T'},
+            {label: 'large value', value: 123.456789, expected: '123.46T'},
+            {label: '0.0100001', value: 0.0100001, expected: '0.01T'},
+            {label: '0.0099999', value: 0.0099999, expected: '0.01T'}
+        ])('short strategy: formats $label', ({value, expected}) => {
+            expect(formatCyclesValueWithUnitByStrategy({value, unit: 'T'}, 'short')).toBe(expected);
         });
 
-        describe('long strategy', () => {
-            it('should use 4 decimal places for values above 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.011, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('0.011T');
-            });
-
-            it('should use 4 decimal places for values equal to 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.01, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('0.01T');
-            });
-
-            it('should use 12 decimal places for values below 0.01T', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.009999, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('0.009999T');
-            });
-
-            it('should use 12 decimal places for very small values', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0.000001234567, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('0.000001234567T');
-            });
-
-            it('should use 4 decimal places for large values', () => {
-                const valueWithUnit: ValueWithUnit = {value: 123.456789, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('123.4568T');
-            });
-
-            it('should handle exactly 0.01T threshold', () => {
-                const valueWithUnit1: ValueWithUnit = {value: 0.0100001, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit1, 'long')).toBe('0.01T');
-
-                const valueWithUnit2: ValueWithUnit = {value: 0.0099999, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit2, 'long')).toBe('0.0099999T');
-            });
+        it.each([
+            {label: 'above 0.01T', value: 0.011, expected: '0.011T'},
+            {label: 'equal 0.01T', value: 0.01, expected: '0.01T'},
+            {label: 'just below 0.01', value: 0.009999, expected: '0.009999T'},
+            {label: 'very small', value: 0.000001234567, expected: '0.000001234567T'},
+            {label: 'large value', value: 123.456789, expected: '123.4568T'},
+            {label: '0.0100001', value: 0.0100001, expected: '0.01T'},
+            {label: '0.0099999', value: 0.0099999, expected: '0.0099999T'}
+        ])('long strategy: formats $label', ({value, expected}) => {
+            expect(formatCyclesValueWithUnitByStrategy({value, unit: 'T'}, 'long')).toBe(expected);
         });
 
-        describe('edge cases', () => {
-            it('should handle undefined value with short strategy', () => {
-                expect(formatCyclesValueWithUnitByStrategy(undefined, 'short')).toBe('-');
-            });
-
-            it('should handle undefined value with long strategy', () => {
-                expect(formatCyclesValueWithUnitByStrategy(undefined, 'long')).toBe('-');
-            });
-
-            it('should handle zero value with short strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('0T');
-            });
-
-            it('should handle zero value with long strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: 0, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('0T');
-            });
-
-            it('should handle negative values with short strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: -1.23456, unit: 'T'};
-                // Note: Negative values are not > 0.01, so uses default (4 decimal places)
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('-1.2346T');
-            });
-
-            it('should handle negative values with long strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: -1.23456, unit: 'T'};
-                // Note: Negative values are not > 0.01, so uses default (12 decimal places)
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('-1.23456T');
-            });
-
-            it('should handle bigint values with short strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: 100n, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe('100T');
-            });
-
-            it('should handle bigint values with long strategy', () => {
-                const valueWithUnit: ValueWithUnit = {value: 100n, unit: 'T'};
-                expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe('100T');
-            });
+        it.each([{strategy: 'short' as const}, {strategy: 'long' as const}])('returns fallback for undefined ($strategy strategy)', ({strategy}) => {
+            expect(formatCyclesValueWithUnitByStrategy(undefined, strategy)).toBe('-');
         });
 
-        describe('threshold boundary testing', () => {
-            it('should apply correct decimal places at boundary for short strategy', () => {
-                const testCases = [
-                    {value: 0.01000001, expected: '0.01T'},
-                    {value: 0.01, expected: '0.01T'},
-                    {value: 0.00999999, expected: '0.01T'},
-                    {value: 0.001, expected: '0.001T'},
-                    {value: 0.0001, expected: '0.0001T'}
-                ];
+        it.each([{strategy: 'short' as const}, {strategy: 'long' as const}])('returns "0T" for zero ($strategy strategy)', ({strategy}) => {
+            expect(formatCyclesValueWithUnitByStrategy({value: 0, unit: 'T'}, strategy)).toBe('0T');
+        });
 
-                testCases.forEach(({value, expected}) => {
-                    const valueWithUnit: ValueWithUnit = {value, unit: 'T'};
-                    expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'short')).toBe(expected);
-                });
+        it.each([
+            {strategy: 'short' as const, expected: '-1.2346T'},
+            {strategy: 'long' as const, expected: '-1.23456T'}
+        ])('formats negative value with $strategy strategy', ({strategy, expected}) => {
+            expect(formatCyclesValueWithUnitByStrategy({value: -1.23456, unit: 'T'}, strategy)).toBe(expected);
+        });
+
+        it.each([{strategy: 'short' as const}, {strategy: 'long' as const}])('formats bigint value with $strategy strategy', ({strategy}) => {
+            expect(formatCyclesValueWithUnitByStrategy({value: 100n, unit: 'T'}, strategy)).toBe('100T');
+        });
+
+        describe('threshold boundary', () => {
+            it.each([
+                {value: 0.01000001, expected: '0.01T'},
+                {value: 0.00999999, expected: '0.01T'},
+                {value: 0.001, expected: '0.001T'},
+                {value: 0.0001, expected: '0.0001T'}
+            ])('short strategy: $value → "$expected"', ({value, expected}) => {
+                expect(formatCyclesValueWithUnitByStrategy({value, unit: 'T'}, 'short')).toBe(expected);
             });
 
-            it('should apply correct decimal places at boundary for long strategy', () => {
-                const testCases = [
-                    {value: 0.01000001, expected: '0.01T'},
-                    {value: 0.01, expected: '0.01T'},
-                    {value: 0.00999999, expected: '0.00999999T'},
-                    {value: 0.001, expected: '0.001T'},
-                    {value: 0.0001, expected: '0.0001T'},
-                    {value: 0.000001, expected: '0.000001T'}
-                ];
-
-                testCases.forEach(({value, expected}) => {
-                    const valueWithUnit: ValueWithUnit = {value, unit: 'T'};
-                    expect(formatCyclesValueWithUnitByStrategy(valueWithUnit, 'long')).toBe(expected);
-                });
+            it.each([
+                {value: 0.01000001, expected: '0.01T'},
+                {value: 0.00999999, expected: '0.00999999T'},
+                {value: 0.001, expected: '0.001T'},
+                {value: 0.0001, expected: '0.0001T'},
+                {value: 0.000001, expected: '0.000001T'}
+            ])('long strategy: $value → "$expected"', ({value, expected}) => {
+                expect(formatCyclesValueWithUnitByStrategy({value, unit: 'T'}, 'long')).toBe(expected);
             });
         });
     });
 
+    describe('formatCycles', () => {
+        it('returns default fallback for undefined', () => {
+            expect(formatCycles(undefined)).toBe('-');
+        });
+
+        it('respects custom fallback option', () => {
+            expect(formatCycles(undefined, {fallback: 'N/A'})).toBe('N/A');
+        });
+
+        it.each([
+            {label: '0n', input: 0n, expected: '0'},
+            {label: '999n (no SI unit)', input: 999n, expected: '999'},
+            {label: '1 000n → K', input: 1000n, expected: '1K'},
+            {label: '1 000 000n → M', input: 1000000n, expected: '1M'},
+            {label: '1 000 000 000n → G', input: 1000000000n, expected: '1G'},
+            {label: '1 000 000 000 000n → T', input: 1000000000000n, expected: '1T'},
+            {label: '1 500 000n → 1.5M', input: 1500000n, expected: '1.5M'}
+        ])('auto-scales $label to SI unit', ({input, expected}) => {
+            expect(formatCycles(input)).toBe(expected);
+        });
+
+        it('respects custom decimalPlaces option', () => {
+            expect(formatCycles(1234567890000n, {decimalPlaces: 2})).toBe('1.23T');
+        });
+    });
+
     describe('formatIcpXdrConversionRateInTCyclesPerICP', () => {
-        it('should format conversion rate with 4 decimal places', () => {
-            // xdrPermyriadPerIcp = 10_000 means 1 T cycles per ICP
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(10_000n)).toBe('1 ICP');
-        });
-
-        it('should format conversion rate when 1 ICP = 2 T cycles', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(20_000n)).toBe('0.5 ICP');
-        });
-
-        it('should format conversion rate when 1 ICP = 0.5 T cycles', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(5_000n)).toBe('2 ICP');
-        });
-
-        it('should format small conversion rates', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(1_000n)).toBe('10 ICP');
-        });
-
-        it('should format large conversion rates', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(100_000n)).toBe('0.1 ICP');
-        });
-
-        it('should round to 4 decimal places', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(33_333n)).toBe('0.3 ICP');
-        });
-
-        it('should handle very small values with precision', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(12_345n)).toBe('0.81 ICP');
-        });
-
-        it('should format with thousand separator for large values', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(1n)).toBe('10 000 ICP');
-        });
-
-        it('should handle typical market rates', () => {
-            expect(formatIcpXdrConversionRateInTCyclesPerICP(13_500n)).toBe('0.7407 ICP');
+        it.each([
+            {label: '10_000 (1 T/ICP)', rate: 10_000n, expected: '1 ICP'},
+            {label: '20_000 (0.5 T/ICP)', rate: 20_000n, expected: '0.5 ICP'},
+            {label: '5_000 (2 T/ICP)', rate: 5_000n, expected: '2 ICP'},
+            {label: '1_000 (10 T/ICP)', rate: 1_000n, expected: '10 ICP'},
+            {label: '100_000 (0.1 T/ICP)', rate: 100_000n, expected: '0.1 ICP'},
+            {label: '33_333 (rounds)', rate: 33_333n, expected: '0.3 ICP'},
+            {label: '12_345', rate: 12_345n, expected: '0.81 ICP'},
+            {label: '1 (10 000 T/ICP, large)', rate: 1n, expected: '10 000 ICP'},
+            {label: '13_500 (market rate)', rate: 13_500n, expected: '0.7407 ICP'}
+        ])('formats $label as "$expected"', ({rate, expected}) => {
+            expect(formatIcpXdrConversionRateInTCyclesPerICP(rate)).toBe(expected);
         });
     });
 });
