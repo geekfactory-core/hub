@@ -28,8 +28,8 @@ bin/repro-build-in-docker.sh
 
 ```bash
 Built wasm hash and size:
-target/release/reproducible/hub_assets_backend.wasm cd6dda27c84ba36ec217e2e870491aed6182102577dcdd087722343093553452 - 4386224
-target/release/reproducible/hub_canister_impl-opt.wasm 584efd0339d4bc467bbf7f992a429001bc4425d997106e20d11f3e4098d4e711 - 2859064
+target/release/reproducible/hub_assets_backend.wasm 720ead0ff6cb47061fea635d99a5ba22009ea6bffe527022fcafe2a265ec4556 - 4386224
+target/release/reproducible/hub_canister_impl-opt.wasm 32d24500e21ea022d344ade22f5c991ee68e1325bd78a3380b30b3f31cb1494f - 2859063
 ```
 
 4. Fetch the hashes of both canisters and compare them with the hashes from the previous step:
