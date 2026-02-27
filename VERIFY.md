@@ -15,7 +15,7 @@ Releases are built using a [reproducible build](https://docs.internetcomputer.or
 1. Check out the source code by release tag:
 
 ```bash
-git checkout 0.0.1
+git checkout 0.0.2
 ```
 
 2. Run the build script:
@@ -28,8 +28,8 @@ bin/repro-build-in-docker.sh
 
 ```bash
 Built wasm hash and size:
-target/release/reproducible/hub_assets_backend.wasm 593f586d5a454510eb4576c2955fad72cd3d216df130817ec0581af3ea165c59 - 4384432
-target/release/reproducible/hub_canister_impl-opt.wasm 25898e759420fefe312f89541cd314837f7b90bcd55397fd2bb51220cf4a3757 - 2838790
+target/release/reproducible/hub_assets_backend.wasm cd6dda27c84ba36ec217e2e870491aed6182102577dcdd087722343093553452 - 4386224
+target/release/reproducible/hub_canister_impl-opt.wasm 584efd0339d4bc467bbf7f992a429001bc4425d997106e20d11f3e4098d4e711 - 2859064
 ```
 
 4. Fetch the hashes of both canisters and compare them with the hashes from the previous step:
