@@ -15,6 +15,8 @@
 # dfx temporary files
 .dfx/
 .env
+.env.development
+.env.test
 
 # rust
 /target/
@@ -26,3 +28,8 @@ dist/
 
 # dfinity snapshot files
 snapshot/
+
+# AI instructions
+dev/
+.github/
+.claude/

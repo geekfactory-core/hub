@@ -1,12 +1,11 @@
-use candid::Principal;
-use common_contract_api::{get_wasm_hash, ContractTemplateId};
+use common_contract_api::get_wasm_hash;
 use hub_canister_api::{
     add_contract_template::{AddContractTemplateError, AddContractTemplateResult},
     block_contract_template::BlockContractTemplateError,
+    set_contract_template_retired::SetContractTemplateRetiredError,
     set_upload_wasm_grant::SetUploadWasmGrantError,
     types::{
-        AccessRight, CanisterSettings, Config, ContractTemplateDefinition, HubEventType,
-        Permission, UploadWasmGrant,
+        AccessRight, Config, ContractTemplateDefinition, HubEventType, Permission, UploadWasmGrant,
     },
     upload_wasm_chunk::UploadWasmChunkError,
 };
@@ -16,13 +15,16 @@ use crate::{
     queries::get_contract_template::get_contract_template_int,
     read_state,
     test::tests::{
-        components::ic::ht_set_test_caller, ht_get_test_admin, ht_get_test_user, ht_init_test_hub,
-        ht_set_initial_config,
+        components::ic::ht_set_test_caller,
+        drivers::contract::ht_add_contract,
+        ht_get_test_admin, ht_get_test_user, ht_init_test_hub, ht_set_initial_config,
+        support::fixtures::{ht_get_face_contract_def, TEST_WASM},
     },
     updates::{
         add_contract_template::add_contract_template_int,
         block_contract_template::block_contract_template_int,
         set_access_rights::set_access_rights_int, set_config::set_config_int,
+        set_contract_template_retired::set_contract_template_retired_int,
         set_upload_wasm_grant::set_upload_wasm_grant_int, upload_wasm_chunk::upload_wasm_chunk_int,
     },
 };
@@ -43,7 +45,7 @@ fn test_add_contract() {
     ht_set_initial_config();
 
     let wrong_wasm = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 11];
-    let wasm = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let wasm = TEST_WASM.to_vec();
     let wasm_hash = get_wasm_hash(&wasm);
     let contract_wasm_max_size = wasm.len();
     let contract_def = ContractTemplateDefinition {
@@ -157,97 +159,12 @@ fn test_add_contract() {
         if event_contract_id == &contract_template_id);
 }
 
-pub(crate) fn ht_add_contract(
-    admin: Principal,
-    contract_def: ContractTemplateDefinition,
-    wasm: Vec<u8>,
-) -> ContractTemplateId {
-    ht_init_test_hub();
-
-    ht_set_test_caller(admin);
-
-    let result = set_access_rights_int(vec![AccessRight {
-        caller: admin,
-        permissions: Some(vec![
-            Permission::SetAccessRights,
-            Permission::SetConfig,
-            Permission::AddContractTemplate,
-        ]),
-        description: None,
-    }]);
-    assert!(result.is_ok());
-    ht_set_initial_config();
-
-    let wasm_hash = get_wasm_hash(&wasm);
-    let contract_def = ContractTemplateDefinition {
-        wasm_hash,
-        ..contract_def
-    };
-
-    let contract_wasm_max_size = wasm.len();
-    let config = read_state(|state| state.get_model().get_config_storage().get_config().clone());
-    let result = set_config_int(Config {
-        contract_wasm_max_size,
-        ..config
-    });
-    assert!(result.is_ok());
-
-    // ADD GRANT
-    let operator = ht_get_test_user();
-    let result = set_upload_wasm_grant_int(Some(UploadWasmGrant {
-        operator,
-        wasm_length: contract_wasm_max_size,
-    }));
-    assert!(result.is_ok());
-
-    // UPLOAD WASM
-    ht_set_test_caller(operator);
-    let result = upload_wasm_chunk_int(true, wasm.clone());
-    assert!(result.is_ok());
-
-    // ADD CONTRACT
-    ht_set_test_caller(admin);
-    match add_contract_template_int(contract_def.clone()) {
-        Ok(AddContractTemplateResult {
-            contract_template_id,
-        }) => contract_template_id,
-        Err(error) => panic!("Failed to add contract: {error:?}"),
-    }
-}
-
-pub const TEST_CONTRACT_INITIAL_CYCLES: u128 = 9_000_000_000;
-pub(crate) fn ht_get_face_contract_def() -> ContractTemplateDefinition {
-    ContractTemplateDefinition {
-        name: "name".to_string(),
-        wasm_hash: "".to_string(),
-        short_description: "short_description".to_string(),
-        long_description: Some("long_description".to_string()),
-        source_url: "source_url".to_string(),
-        source_tag: "source_tag".to_string(),
-        activation_required: true,
-        certificate_duration: 20000,
-        contract_canister_settings: CanisterSettings {
-            initial_cycles: TEST_CONTRACT_INITIAL_CYCLES,
-            compute_allocation: None,
-            memory_allocation: None,
-            freezing_threshold: None,
-            reserved_cycles_limit: None,
-            wasm_memory_limit: None,
-            wasm_memory_threshold: None,
-            environment_variables: None,
-        },
-        documentation_url: "documentation_url".to_string(),
-        terms_of_use_url: "terms_of_use_url".to_string(),
-    }
-}
-
 #[test]
 fn test_block_contract() {
     let admin = ht_get_test_admin();
     let contract_def = ht_get_face_contract_def();
 
-    let contract_template_id =
-        ht_add_contract(admin, contract_def, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    let contract_template_id = ht_add_contract(admin, contract_def, TEST_WASM.to_vec());
     assert_eq!(contract_template_id, 0);
 
     let contract = get_contract_template_int(contract_template_id).unwrap();
@@ -279,5 +196,67 @@ fn test_block_contract() {
     assert!(contract.contract_template.blocked.is_some());
 
     ht_last_hub_event_matches!(HubEventType::ContractTemplateBlocked { contract_template_id: event_contract_id }
+        if event_contract_id == &contract_template_id);
+}
+
+#[test]
+fn test_retire_contract() {
+    let admin = ht_get_test_admin();
+    let contract_def = ht_get_face_contract_def();
+
+    let contract_template_id = ht_add_contract(admin, contract_def, TEST_WASM.to_vec());
+    assert_eq!(contract_template_id, 0);
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    assert!(contract.contract_template.retired.is_none());
+
+    // CHECK PERMISSION DENIED
+    let result = set_contract_template_retired_int(
+        contract_template_id,
+        Some("no longer supported".to_string()),
+    );
+    ht_result_err_matches!(result, SetContractTemplateRetiredError::PermissionDenied);
+
+    let result = set_access_rights_int(vec![AccessRight {
+        caller: admin,
+        permissions: Some(vec![
+            Permission::SetAccessRights,
+            Permission::RetireContractTemplate,
+        ]),
+        description: None,
+    }]);
+    assert!(result.is_ok());
+
+    // CHECK CONTRACT NOT FOUND
+    let result = set_contract_template_retired_int(
+        contract_template_id + 1,
+        Some("no longer supported".to_string()),
+    );
+    ht_result_err_matches!(
+        result,
+        SetContractTemplateRetiredError::ContractTemplateNotFound
+    );
+
+    // RETIRE CONTRACT SUCCESS
+    let reason = "no longer supported".to_string();
+    let result = set_contract_template_retired_int(contract_template_id, Some(reason.clone()));
+    assert!(result.is_ok());
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    let retired = contract.contract_template.retired.as_ref();
+    assert!(retired.is_some());
+    assert_eq!(retired.unwrap().value, reason);
+
+    ht_last_hub_event_matches!(HubEventType::ContractTemplateRetired { contract_template_id: event_contract_id, retired: true }
+        if event_contract_id == &contract_template_id);
+
+    // UNRETIRE CONTRACT SUCCESS
+    let result = set_contract_template_retired_int(contract_template_id, None);
+    assert!(result.is_ok());
+
+    let contract = get_contract_template_int(contract_template_id).unwrap();
+    assert!(contract.contract_template.retired.is_none());
+
+    ht_last_hub_event_matches!(HubEventType::ContractTemplateRetired { contract_template_id: event_contract_id, retired: false }
         if event_contract_id == &contract_template_id);
 }

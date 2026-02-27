@@ -7,6 +7,7 @@ pub enum Permission {
     SetConfig,
     AddContractTemplate,
     BlockContractTemplate,
+    RetireContractTemplate,
 }
 
 pub type Permissions = Option<Vec<Permission>>;

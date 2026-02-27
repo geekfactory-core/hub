@@ -24,6 +24,8 @@ pub struct ContractTemplateModel {
     pub registered: TimestampMillis,
     pub definition: ContractTemplateDefinition,
     pub blocked: Option<Timestamped<String>>,
+    #[serde(default)]
+    pub retired: Option<Timestamped<String>>,
     pub deployments_count: usize,
 }
 
@@ -48,12 +50,26 @@ impl ContractTemplatesStorage {
             registered,
             definition,
             blocked: None,
+            retired: None,
             deployments_count: 0,
         };
         self.contract_templates_table
             .insert(contract_template_id, CBor(contract_template));
         self.wasm_table.insert(contract_template_id, wasm);
         contract_template_id
+    }
+
+    pub(crate) fn set_retired(
+        &mut self,
+        contract_template_id: &ContractTemplateId,
+        retired: Option<Timestamped<String>>,
+    ) {
+        if let Some(contract_template) = self.contract_templates_table.get(contract_template_id) {
+            let mut contract_template = contract_template.to_owned();
+            contract_template.retired = retired;
+            self.contract_templates_table
+                .insert(*contract_template_id, CBor(contract_template));
+        }
     }
 
     pub(crate) fn block_contract_template(

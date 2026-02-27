@@ -6,3 +6,9 @@ export const getContractTemplateBlockedData = (contractTemplateInformation: Cont
     const value = fromNullable(contractTemplateInformation.blocked);
     return nonNullish(value) ? {type: 'blocked', reason: value.value, timestamp: value.timestamp} : {type: 'active'};
 };
+
+export type ContractTemplateRetiredData = {type: 'active'} | {type: 'retired'; reason: string; timestamp: bigint};
+export const getContractTemplateRetiredData = (contractTemplateInformation: ContractTemplateInformation): ContractTemplateRetiredData => {
+    const value = fromNullable(contractTemplateInformation.retired);
+    return nonNullish(value) ? {type: 'retired', reason: value.value, timestamp: value.timestamp} : {type: 'active'};
+};

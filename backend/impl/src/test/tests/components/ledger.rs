@@ -12,6 +12,10 @@ thread_local! {
     static __TABLE: RefCell<BTreeMap<String, TokenE8s>> = RefCell::default();
 }
 
+pub(crate) fn ht_reset_ledger() {
+    __TABLE.with(|t| t.borrow_mut().clear());
+}
+
 pub(crate) fn ht_deposit_account(account: &AccountIdentifier, tokens: TokenE8s) {
     let account = account.to_hex();
 
@@ -61,12 +65,12 @@ pub(crate) fn ht_get_account_balance(account: String) -> TokenE8s {
     })
 }
 
-pub struct LedgerTest {
+pub(crate) struct LedgerTest {
     canister: Principal,
 }
 
 impl LedgerTest {
-    pub fn new(canister: Principal) -> Self {
+    pub(crate) fn new(canister: Principal) -> Self {
         Self { canister }
     }
 }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use common_canister_impl::components::rand::RandGenerator;
 
-pub struct IcRandTest;
+pub(crate) struct IcRandTest;
 
 #[async_trait]
 impl RandGenerator for IcRandTest {

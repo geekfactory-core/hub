@@ -13,7 +13,7 @@ interface OptionType extends DefaultOptionType {
     value: ContractTemplateStateType;
 }
 
-export const ActiveBlockedSelect = (props: {onChange: (value: ContractTemplateStateType) => void; disabled: boolean}) => {
+export const TemplateStateSelect = (props: {onChange: (value: ContractTemplateStateType) => void; disabled: boolean}) => {
     const {
         listState,
         feature: {
@@ -28,12 +28,8 @@ export const ActiveBlockedSelect = (props: {onChange: (value: ContractTemplateSt
                 value: 'all'
             },
             {
-                label: i18.contractTemplates.form.filter.active,
-                value: 'active'
-            },
-            {
-                label: i18.contractTemplates.form.filter.blocked,
-                value: 'blocked'
+                label: i18.contractTemplates.form.filter.available,
+                value: 'available'
             }
         ];
     }, []);

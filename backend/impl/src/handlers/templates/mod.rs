@@ -13,6 +13,7 @@ pub(crate) fn build_contract_template_information(
         registered: model.registered,
         definition: model.definition.clone(),
         blocked: model.blocked.clone(),
+        retired: model.retired.clone(),
         deployments_count: model.deployments_count,
     }
 }

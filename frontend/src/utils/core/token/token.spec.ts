@@ -1,76 +1,88 @@
 import {ICPToken, type Token} from '@dfinity/utils';
-import {describe, expect, test} from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {formatNNSTokenAmount, formatTokenAmount, formatTokenAmountWithSymbol} from './token';
 
 const ICP: Token = ICPToken;
 
 describe('token', () => {
     describe('formatTokenAmount', () => {
-        test('returns fallback for undefined', () => {
+        it('returns fallback for undefined', () => {
             expect(formatTokenAmount(undefined, ICP)).toBe('-');
             expect(formatTokenAmount(undefined, ICP, {fallback: 'n/a'})).toBe('n/a');
         });
 
-        test('formats amount with default decimals', () => {
-            expect(formatTokenAmount(0n, ICP)).toBe('0');
-            expect(formatTokenAmount(1n, ICP)).toBe('0.00000001');
-            expect(formatTokenAmount(100000000n, ICP)).toBe('1');
-            expect(formatTokenAmount(123456789n, ICP)).toBe('1.23456789');
+        it.each([
+            {label: '0n', input: 0n, expected: '0'},
+            {label: '1n', input: 1n, expected: '0.00000001'},
+            {label: '100000000n', input: 100000000n, expected: '1'},
+            {label: '123456789n', input: 123456789n, expected: '1.23456789'}
+        ])('formats $label with default decimals', ({input, expected}) => {
+            expect(formatTokenAmount(input, ICP)).toBe(expected);
         });
 
-        test('formats amount with custom decimals', () => {
-            expect(formatTokenAmount(1n, ICP, {maxDecimalPlaces: 2})).toBe('0');
-            expect(formatTokenAmount(1n, ICP, {maxDecimalPlaces: 2, minDecimalPlaces: 2})).toBe('0.00');
-            expect(formatTokenAmount(123456789n, ICP, {maxDecimalPlaces: 2})).toBe('1.23');
-            expect(formatTokenAmount(123456789n, ICP, {maxDecimalPlaces: 4})).toBe('1.2346');
-            expect(formatTokenAmount(123456789n, ICP, {maxDecimalPlaces: 4, minDecimalPlaces: 5})).toBe('1.23460');
+        it.each([
+            {label: 'maxDecimalPlaces: 2 truncates tiny value to "0"', input: 1n, options: {maxDecimalPlaces: 2}, expected: '0'},
+            {label: 'maxDecimalPlaces: 2, minDecimalPlaces: 2 pads tiny value to "0.00"', input: 1n, options: {maxDecimalPlaces: 2, minDecimalPlaces: 2}, expected: '0.00'},
+            {label: 'maxDecimalPlaces: 2 truncates fractional part', input: 123456789n, options: {maxDecimalPlaces: 2}, expected: '1.23'},
+            {label: 'maxDecimalPlaces: 4 rounds up', input: 123456789n, options: {maxDecimalPlaces: 4}, expected: '1.2346'},
+            {label: 'maxDecimalPlaces: 4, minDecimalPlaces: 5 truncates then pads', input: 123456789n, options: {maxDecimalPlaces: 4, minDecimalPlaces: 5}, expected: '1.23460'}
+        ] as const)('$label', ({input, options, expected}) => {
+            expect(formatTokenAmount(input, ICP, options)).toBe(expected);
         });
     });
 
     describe('formatTokenAmountWithSymbol', () => {
-        test('returns fallback for undefined', () => {
+        it('returns fallback for undefined', () => {
             expect(formatTokenAmountWithSymbol(undefined, ICP)).toBe('-');
             expect(formatTokenAmountWithSymbol(undefined, ICP, {fallback: 'n/a'})).toBe('n/a');
         });
 
-        test('formats amount with symbol', () => {
-            expect(formatTokenAmountWithSymbol(0n, ICP)).toBe('0 ICP');
-            expect(formatTokenAmountWithSymbol(1n, ICP)).toBe('0.00000001 ICP');
-            expect(formatTokenAmountWithSymbol(100000000n, ICP)).toBe('1 ICP');
-            expect(formatTokenAmountWithSymbol(123456789n, ICP)).toBe('1.23456789 ICP');
+        it.each([
+            {label: '0n', input: 0n, expected: '0 ICP'},
+            {label: '1n', input: 1n, expected: '0.00000001 ICP'},
+            {label: '100000000n', input: 100000000n, expected: '1 ICP'},
+            {label: '123456789n', input: 123456789n, expected: '1.23456789 ICP'}
+        ])('formats $label with symbol', ({input, expected}) => {
+            expect(formatTokenAmountWithSymbol(input, ICP)).toBe(expected);
         });
 
-        test('respects custom decimals', () => {
-            expect(formatTokenAmountWithSymbol(1n, ICP, {maxDecimalPlaces: 2})).toBe('0 ICP');
-            expect(formatTokenAmountWithSymbol(1n, ICP, {maxDecimalPlaces: 2, minDecimalPlaces: 2})).toBe('0.00 ICP');
-            expect(formatTokenAmountWithSymbol(123456789n, ICP, {maxDecimalPlaces: 2})).toBe('1.23 ICP');
-            expect(formatTokenAmountWithSymbol(123456789n, ICP, {maxDecimalPlaces: 4})).toBe('1.2346 ICP');
-            expect(formatTokenAmountWithSymbol(123456789n, ICP, {maxDecimalPlaces: 4, minDecimalPlaces: 5})).toBe('1.23460 ICP');
+        it.each([
+            {label: 'maxDecimalPlaces: 2 truncates tiny value to "0 ICP"', input: 1n, options: {maxDecimalPlaces: 2}, expected: '0 ICP'},
+            {label: 'maxDecimalPlaces: 2, minDecimalPlaces: 2 pads tiny value to "0.00 ICP"', input: 1n, options: {maxDecimalPlaces: 2, minDecimalPlaces: 2}, expected: '0.00 ICP'},
+            {label: 'maxDecimalPlaces: 2 truncates fractional part', input: 123456789n, options: {maxDecimalPlaces: 2}, expected: '1.23 ICP'},
+            {label: 'maxDecimalPlaces: 4 rounds up', input: 123456789n, options: {maxDecimalPlaces: 4}, expected: '1.2346 ICP'},
+            {label: 'maxDecimalPlaces: 4, minDecimalPlaces: 5 truncates then pads', input: 123456789n, options: {maxDecimalPlaces: 4, minDecimalPlaces: 5}, expected: '1.23460 ICP'}
+        ] as const)('$label', ({input, options, expected}) => {
+            expect(formatTokenAmountWithSymbol(input, ICP, options)).toBe(expected);
         });
     });
 
     describe('formatNNSTokenAmount', () => {
-        test('returns fallback for undefined', () => {
+        it('returns fallback for undefined', () => {
             expect(formatNNSTokenAmount(undefined, ICP)).toBe('-');
             expect(formatNNSTokenAmount(undefined, ICP, {fallback: 'n/a'})).toBe('n/a');
         });
 
-        test('returns "0" for zero', () => {
+        it('returns "0" for zero', () => {
             expect(formatNNSTokenAmount(0n, ICP)).toBe('0');
         });
 
-        test('uses 8 decimal places for amounts less than 0.01', () => {
-            expect(formatNNSTokenAmount(1n, ICP)).toBe('0.00000001');
-            expect(formatNNSTokenAmount(10000n, ICP)).toBe('0.0001');
-            expect(formatNNSTokenAmount(900000n, ICP)).toBe('0.009');
-            expect(formatNNSTokenAmount(999999n, ICP)).toBe('0.00999999');
+        it.each([
+            {input: 1n, expected: '0.00000001'},
+            {input: 10000n, expected: '0.0001'},
+            {input: 900000n, expected: '0.009'},
+            {input: 999999n, expected: '0.00999999'}
+        ])('uses 8 decimal places for $input (< 0.01)', ({input, expected}) => {
+            expect(formatNNSTokenAmount(input, ICP)).toBe(expected);
         });
 
-        test('uses 2 decimal places for amounts >= 0.01', () => {
-            expect(formatNNSTokenAmount(1000000n, ICP)).toBe('0.01');
-            expect(formatNNSTokenAmount(198765432n, ICP)).toBe('1.99');
-            expect(formatNNSTokenAmount(100000000n, ICP)).toBe('1.00');
-            expect(formatNNSTokenAmount(110000000n, ICP)).toBe('1.10');
+        it.each([
+            {input: 1000000n, expected: '0.01'},
+            {input: 198765432n, expected: '1.99'},
+            {input: 100000000n, expected: '1.00'},
+            {input: 110000000n, expected: '1.10'}
+        ])('uses 2 decimal places for $input (>= 0.01)', ({input, expected}) => {
+            expect(formatNNSTokenAmount(input, ICP)).toBe(expected);
         });
     });
 });

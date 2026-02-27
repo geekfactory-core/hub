@@ -8,8 +8,8 @@ import {type ChangeEvent, type KeyboardEvent, type ReactNode, useCallback, useEf
 import {type ListSortItem, deserializeListSortItem} from '../../../hook/useRemoteListWithUrlState';
 import {DefaultButton} from '../../widgets/button/DefaultButton';
 import {PrimaryButton} from '../../widgets/button/PrimaryButton';
-import {ActiveBlockedSelect} from './ActiveBlockedSelect';
 import {SortingSelect} from './SortingSelect';
+import {TemplateStateSelect} from './TemplateStateSelect';
 
 export const Form = () => {
     const {width: screenWidth} = useWindowSize(50);
@@ -132,7 +132,7 @@ export const Form = () => {
     return (
         <Flex gap={8} align="center" justify="space-between" wrap>
             <Flex gap={8} align="center">
-                <ActiveBlockedSelect onChange={activeBlockedOnChange} disabled={inputsDisabled} />
+                <TemplateStateSelect onChange={activeBlockedOnChange} disabled={inputsDisabled} />
                 <SortingSelect onChange={sortingOnChange} disabled={inputsDisabled} />
             </Flex>
             <Flex gap={8} wrap>

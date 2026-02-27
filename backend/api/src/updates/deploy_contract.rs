@@ -33,6 +33,7 @@ pub enum DeployContractError {
     },
     ContractTemplateNotFound,
     ContractTemplateBlocked,
+    ContractTemplateRetired,
     InvalidApprovedAccount {
         reason: String,
     },

@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {InMemoryKeyValueStore, LocalStorageKeyValueStore} from './KeyValueStore';
 
 describe('InMemoryKeyValueStore', () => {
@@ -9,22 +9,22 @@ describe('InMemoryKeyValueStore', () => {
     });
 
     describe('isFake', () => {
-        it('should return true', () => {
+        it('returns true', () => {
             expect(store.isFake()).toBe(true);
         });
     });
 
     describe('set and get', () => {
-        it('should store and retrieve string values', () => {
+        it('stores and retrieves string values', () => {
             store.set('key1', 'value1');
             expect(store.get('key1')).toBe('value1');
         });
 
-        it('should return undefined for non-existent keys', () => {
+        it('returns undefined for non-existent keys', () => {
             expect(store.get('nonexistent')).toBeUndefined();
         });
 
-        it('should overwrite existing values', () => {
+        it('overwrites existing values', () => {
             store.set('key2', 'initial');
             store.set('key2', 'updated');
             expect(store.get('key2')).toBe('updated');
@@ -32,19 +32,19 @@ describe('InMemoryKeyValueStore', () => {
     });
 
     describe('remove', () => {
-        it('should remove existing key', () => {
+        it('removes existing key', () => {
             store.set('key3', 'value3');
             store.remove('key3');
             expect(store.get('key3')).toBeUndefined();
         });
 
-        it('should not throw when removing non-existent key', () => {
+        it('does not throw when removing non-existent key', () => {
             expect(() => store.remove('nonexistent')).not.toThrow();
         });
     });
 
     describe('clearAll', () => {
-        it('should remove all stored items', () => {
+        it('removes all stored items', () => {
             store.set('key4', 'value4');
             store.set('key5', 'value5');
             store.clearAll();
@@ -52,28 +52,28 @@ describe('InMemoryKeyValueStore', () => {
             expect(store.get('key5')).toBeUndefined();
         });
 
-        it('should not throw when clearing empty store', () => {
+        it('does not throw when clearing empty store', () => {
             expect(() => store.clearAll()).not.toThrow();
         });
     });
 
     describe('isEmpty', () => {
-        it('should return true for empty store', () => {
+        it('returns true for empty store', () => {
             expect(store.isEmpty()).toBe(true);
         });
 
-        it('should return false when store has items', () => {
+        it('returns false when store has items', () => {
             store.set('key6', 'value6');
             expect(store.isEmpty()).toBe(false);
         });
 
-        it('should return true after clearing all items', () => {
+        it('returns true after clearing all items', () => {
             store.set('key7', 'value7');
             store.clearAll();
             expect(store.isEmpty()).toBe(true);
         });
 
-        it('should return true after removing last item', () => {
+        it('returns true after removing last item', () => {
             store.set('key8', 'value8');
             store.remove('key8');
             expect(store.isEmpty()).toBe(true);
@@ -111,38 +111,34 @@ describe('LocalStorageKeyValueStore', () => {
         store = new LocalStorageKeyValueStore(namespace, localStorage as unknown as Storage);
     });
 
-    afterEach(() => {
-        localStorage.clear();
-    });
-
     describe('isFake', () => {
-        it('should return false', () => {
+        it('returns false', () => {
             expect(store.isFake()).toBe(false);
         });
     });
 
     describe('set and get', () => {
-        it('should store and retrieve string values', () => {
+        it('stores and retrieves string values', () => {
             store.set('key1', 'value1');
             expect(store.get('key1')).toBe('value1');
         });
 
-        it('should return undefined for non-existent keys', () => {
+        it('returns undefined for non-existent keys', () => {
             expect(store.get('nonexistent')).toBeUndefined();
         });
 
-        it('should overwrite existing values', () => {
+        it('overwrites existing values', () => {
             store.set('key2', 'initial');
             store.set('key2', 'updated');
             expect(store.get('key2')).toBe('updated');
         });
 
-        it('should use namespaced keys in localStorage', () => {
+        it('uses namespaced keys in localStorage', () => {
             store.set('key3', 'value3');
             expect(localStorage.getItem('test_key3')).toBe('value3');
         });
 
-        it('should not interfere with other namespaces', () => {
+        it('does not interfere with other namespaces', () => {
             const otherStore = new LocalStorageKeyValueStore('other_', localStorage as unknown as Storage);
             store.set('key4', 'value4');
             otherStore.set('key4', 'othervalue4');
@@ -153,19 +149,19 @@ describe('LocalStorageKeyValueStore', () => {
     });
 
     describe('remove', () => {
-        it('should remove existing key', () => {
+        it('removes existing key', () => {
             store.set('key5', 'value5');
             store.remove('key5');
             expect(store.get('key5')).toBeUndefined();
         });
 
-        it('should not throw when removing non-existent key', () => {
+        it('does not throw when removing non-existent key', () => {
             expect(() => store.remove('nonexistent')).not.toThrow();
         });
     });
 
     describe('clearAll', () => {
-        it('should remove all stored items from namespace', () => {
+        it('removes all stored items from namespace', () => {
             store.set('key6', 'value6');
             store.set('key7', 'value7');
             store.clearAll();
@@ -173,7 +169,7 @@ describe('LocalStorageKeyValueStore', () => {
             expect(store.get('key7')).toBeUndefined();
         });
 
-        it('should not clear items from other namespaces', () => {
+        it('does not clear items from other namespaces', () => {
             const otherStore = new LocalStorageKeyValueStore('other_', localStorage as unknown as Storage);
             store.set('key8', 'value8');
             otherStore.set('key8', 'othervalue8');
@@ -185,22 +181,22 @@ describe('LocalStorageKeyValueStore', () => {
     });
 
     describe('isEmpty', () => {
-        it('should return true for empty store', () => {
+        it('returns true for empty store', () => {
             expect(store.isEmpty()).toBe(true);
         });
 
-        it('should return false when store has items', () => {
+        it('returns false when store has items', () => {
             store.set('key9', 'value9');
             expect(store.isEmpty()).toBe(false);
         });
 
-        it('should return true after clearing all items', () => {
+        it('returns true after clearing all items', () => {
             store.set('key10', 'value10');
             store.clearAll();
             expect(store.isEmpty()).toBe(true);
         });
 
-        it('should return true after removing last item', () => {
+        it('returns true after removing last item', () => {
             store.set('key11', 'value11');
             store.remove('key11');
             expect(store.isEmpty()).toBe(true);
@@ -208,13 +204,13 @@ describe('LocalStorageKeyValueStore', () => {
     });
 
     describe('namespace handling', () => {
-        it('should handle empty namespace correctly', () => {
+        it('handles empty namespace correctly', () => {
             const nsStore = new LocalStorageKeyValueStore('', localStorage as unknown as Storage);
             nsStore.set('key12', 'value12');
             expect(localStorage.getItem('key12')).toBe('value12');
         });
 
-        it('should handle special characters in namespace', () => {
+        it('handles special characters in namespace', () => {
             const nsStore = new LocalStorageKeyValueStore('user:1/', localStorage as unknown as Storage);
             nsStore.set('key13', 'value13');
             expect(localStorage.getItem('user:1/key13')).toBe('value13');

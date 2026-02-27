@@ -110,6 +110,12 @@ fn create_iter_filter(
         }));
     }
 
+    if let Some(retired) = filter.retired {
+        filters.push(Box::new(move |contract: &ContractTemplateModel| {
+            contract.retired.is_some() == retired
+        }));
+    }
+
     Ok(Box::new(move |(_, contract)| {
         filters.iter().all(|f| f(contract))
     }))

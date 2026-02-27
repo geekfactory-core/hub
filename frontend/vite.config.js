@@ -19,7 +19,7 @@ export default defineConfig(({mode}) => {
     const isProd = mode === 'production';
     const projectRootFolderPath = path.resolve(__dirname, basePathToRoot);
 
-    const tsconfigPath = isProd ? 'tsconfig.prod.json' : isTest ? 'tsconfig.test.json' : 'tsconfig.dev.json';
+    const tsconfigPath = isProd ? 'tsconfig.production.json' : isTest ? 'tsconfig.test.json' : 'tsconfig.dev.json';
     return {
         logLevel: 'info',
         build: {

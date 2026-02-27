@@ -11,6 +11,7 @@ pub type Response = GetContractTemplatesResponse;
 pub struct ContractTemplatesFilter {
     pub filter: Option<String>,
     pub blocked: Option<bool>,
+    pub retired: Option<bool>,
 }
 
 #[derive(CandidType, Deserialize, Debug)]
