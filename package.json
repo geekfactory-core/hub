@@ -4,7 +4,6 @@
     "type": "module",
     "scripts": {
         "format": "prettier ./frontend --write",
-        "start": "npm run start --workspace=frontend",
         "lint": "npm run lint --workspace=frontend",
         "test": "npm run test --workspace=frontend",
         "unused-i18-keys": "npx -y tsx ./bin/find-unused-i18-keys.ts",

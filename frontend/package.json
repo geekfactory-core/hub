@@ -3,7 +3,6 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "start": "vite --port 3101",
         "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
         "test": "vitest run"
     }
