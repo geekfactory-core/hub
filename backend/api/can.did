@@ -35,6 +35,12 @@ type BlockContractTemplateResponse = variant {
   Ok;
   Err : BlockContractTemplateError;
 };
+type BlockContractsArgs = record {
+  contract_canister_ids : vec principal;
+  reason : text;
+};
+type BlockContractsError = variant { PermissionDenied };
+type BlockContractsResponse = variant { Ok; Err : BlockContractsError };
 type CancelDeploymentArgs = record { deployment_id : nat64; reason : text };
 type CancelDeploymentError = variant {
   DeploymentNotFound;
@@ -309,10 +315,9 @@ type FinalizeDeploymentState = variant {
 };
 type GetAccessRightsResponse = variant { Ok : GetAccessRightsResult };
 type GetAccessRightsResult = record { access_rights : vec AccessRight };
-type GetCanisterMetricsError = variant { PermissionDenied };
 type GetCanisterMetricsResponse = variant {
   Ok : GetCanisterMetricsResult;
-  Err : GetCanisterMetricsError;
+  Err : BlockContractsError;
 };
 type GetCanisterMetricsResult = record { metrics : CanisterMetrics };
 type GetCanisterStatusError = variant {
@@ -434,6 +439,7 @@ type HubEventType = variant {
   ContractTemplateBlocked : GetContractTemplateArgs;
   AccessRightsSet : GetAccessRightsResult;
   ContractTemplateAdded : GetContractTemplateArgs;
+  ContractBlocked : record { contract_canister_ids_count : nat64 };
 };
 type HubEventsSortingKey = variant { EventId };
 type IcpConversationRate = variant {
@@ -496,6 +502,7 @@ type ObtainContractCertificateResult = record {
 };
 type Permission = variant {
   AddContractTemplate;
+  BlockContract;
   RetireContractTemplate;
   BlockContractTemplate;
   SetAccessRights;
@@ -581,6 +588,7 @@ type ValidateContractCertificateError = variant {
   InvalidContractReferenceUrl;
   ValidateContractUrlUnavailable : record { reason : text };
   CertificateUnavailable;
+  ContractBlocked : record { reason : text };
 };
 type ValidateContractCertificateResponse = variant {
   Ok : ValidateContractCertificateResult;
@@ -597,6 +605,7 @@ service : {
   block_contract_template : (BlockContractTemplateArgs) -> (
       BlockContractTemplateResponse,
     );
+  block_contracts : (BlockContractsArgs) -> (BlockContractsResponse);
   cancel_deployment : (CancelDeploymentArgs) -> (CancelDeploymentResponse);
   deploy_contract : (DeployContractArgs) -> (DeployContractResponse);
   get_access_rights : (record {}) -> (GetAccessRightsResponse) query;

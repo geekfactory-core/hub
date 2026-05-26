@@ -61,6 +61,8 @@ async fn validate_contract_certificate_int(
         });
     }
 
+    ensure_contract_not_blocked(&contract_canister)?;
+
     let now = env.get_time().get_current_unix_epoch_time_millis();
     let delay_to_expiration_millis = if certificate.contract_certificate.expiration > now {
         Some(certificate.contract_certificate.expiration - now)
@@ -148,6 +150,21 @@ fn check_canister_wasm_hash(
             reason: error.to_string(),
         })
     }
+}
+
+fn ensure_contract_not_blocked(
+    contract_canister: &Principal,
+) -> Result<(), ValidateContractCertificateError> {
+    if let Some(reason) = read_state(|state| {
+        state
+            .get_model()
+            .get_blocked_contracts_storage()
+            .find_contract_block_reason(contract_canister)
+    }) {
+        return Err(ValidateContractCertificateError::ContractBlocked { reason });
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

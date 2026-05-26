@@ -169,6 +169,9 @@ const CertificateStep = () => {
                     case 'backendErrorWithRetry': {
                         return failedToLoadStatusProto(inProgress);
                     }
+                    case 'contractBlocked': {
+                        return {icon: 'exclamation', status: i18.deployment.contractStatus.certificate.invalid, color: 'red'};
+                    }
                     case 'validationFatalError': {
                         return {icon: 'exclamation', status: i18.deployment.contractStatus.certificate.invalid, color: 'red'};
                     }

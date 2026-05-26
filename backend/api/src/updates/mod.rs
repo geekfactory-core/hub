@@ -1,4 +1,5 @@
 pub mod add_contract_template;
+pub mod block_contracts;
 pub mod block_contract_template;
 pub mod cancel_deployment;
 pub mod deploy_contract;

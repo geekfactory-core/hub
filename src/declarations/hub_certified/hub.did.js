@@ -51,6 +51,15 @@ export const idlFactory = ({ IDL }) => {
     'contract_template_id' : IDL.Nat64,
     'reason' : IDL.Text,
   });
+  const BlockContractsArgs = IDL.Record({
+    'contract_canister_ids' : IDL.Vec(IDL.Principal),
+    'reason' : IDL.Text,
+  });
+  const BlockContractsError = IDL.Variant({ 'PermissionDenied' : IDL.Null });
+  const BlockContractsResponse = IDL.Variant({
+    'Ok' : IDL.Null,
+    'Err' : BlockContractsError,
+  });
   const BlockContractTemplateError = IDL.Variant({
     'ContractTemplateNotFound' : IDL.Null,
     'PermissionDenied' : IDL.Null,
@@ -204,6 +213,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const Permission = IDL.Variant({
     'AddContractTemplate' : IDL.Null,
+    'BlockContract' : IDL.Null,
     'RetireContractTemplate' : IDL.Null,
     'BlockContractTemplate' : IDL.Null,
     'SetAccessRights' : IDL.Null,
@@ -669,6 +679,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const ValidateContractCertificateError = IDL.Variant({
     'CertificateWrong' : IDL.Record({ 'reason' : IDL.Text }),
+    'ContractBlocked' : IDL.Record({ 'reason' : IDL.Text }),
     'ContractInfoUnavailable' : IDL.Null,
     'InvalidContractReferenceUrl' : IDL.Null,
     'ValidateContractUrlUnavailable' : IDL.Record({ 'reason' : IDL.Text }),
@@ -682,6 +693,11 @@ export const idlFactory = ({ IDL }) => {
     'add_contract_template' : IDL.Func(
         [AddContractTemplateArgs],
         [AddContractTemplateResponse],
+        [],
+      ),
+    'block_contracts' : IDL.Func(
+        [BlockContractsArgs],
+        [BlockContractsResponse],
         [],
       ),
     'block_contract_template' : IDL.Func(

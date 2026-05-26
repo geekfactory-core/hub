@@ -26,6 +26,12 @@ type BlockContractTemplateArgs = record {
   contract_template_id : nat64;
   reason : text;
 };
+type BlockContractsArgs = record {
+  contract_canister_ids : vec principal;
+  reason : text;
+};
+type BlockContractsError = variant { PermissionDenied };
+type BlockContractsResponse = variant { Ok; Err : BlockContractsError };
 type BlockContractTemplateError = variant {
   ContractTemplateNotFound;
   PermissionDenied;
@@ -496,6 +502,7 @@ type ObtainContractCertificateResult = record {
 };
 type Permission = variant {
   AddContractTemplate;
+  BlockContract;
   RetireContractTemplate;
   BlockContractTemplate;
   SetAccessRights;
@@ -577,6 +584,7 @@ type ValidateContractCertificateArgs = record {
 };
 type ValidateContractCertificateError = variant {
   CertificateWrong : record { reason : text };
+  ContractBlocked : record { reason : text };
   ContractInfoUnavailable;
   InvalidContractReferenceUrl;
   ValidateContractUrlUnavailable : record { reason : text };
@@ -594,6 +602,7 @@ service : {
   add_contract_template : (AddContractTemplateArgs) -> (
       AddContractTemplateResponse,
     );
+  block_contracts : (BlockContractsArgs) -> (BlockContractsResponse);
   block_contract_template : (BlockContractTemplateArgs) -> (
       BlockContractTemplateResponse,
     );

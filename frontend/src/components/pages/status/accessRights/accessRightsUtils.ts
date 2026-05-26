@@ -1,4 +1,11 @@
 import {unionToArray, type KeysOfUnion} from 'frontend/src/utils/core/typescript/typescriptAddons';
 import type {Permission} from 'src/declarations/hub/hub.did';
 
-export const allAccessRightPermissions = unionToArray<KeysOfUnion<Permission>>()('BlockContractTemplate', 'RetireContractTemplate', 'AddContractTemplate', 'SetAccessRights', 'SetConfig');
+export const allAccessRightPermissions = unionToArray<KeysOfUnion<Permission>>()(
+    'BlockContract',
+    'BlockContractTemplate',
+    'RetireContractTemplate',
+    'AddContractTemplate',
+    'SetAccessRights',
+    'SetConfig'
+);

@@ -246,6 +246,7 @@ const rawI18 = {
                 },
                 validationState: {
                     certificateExpired: 'This contract can no longer be trusted for secure operations because its certificate has expired!',
+                    contractBlocked: (reason: string) => `This contract can no longer be trusted for secure operations because it was blocked: ${reason}`,
                     unableToValidate: 'Unable to validate certificate.',
                     certificateInvalid: 'This contract can no longer be trusted for secure operations because its certificate is invalid!',
                     unableToLoad: 'Unable to load certificate information.'

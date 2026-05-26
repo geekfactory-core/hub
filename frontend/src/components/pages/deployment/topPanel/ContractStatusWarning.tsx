@@ -159,6 +159,16 @@ const ContractValidationWarning = () => {
                         />
                     );
                 }
+                case 'contractBlocked': {
+                    return (
+                        <ErrorAlert
+                            message={i18.deployment.contractStatus.warning.validationState.contractBlocked(
+                                contractValidationDataAvailability.validationState.reason
+                            )}
+                            className="gf-all-caps"
+                        />
+                    );
+                }
                 case 'validationFatalError': {
                     return <ErrorAlert message={i18.deployment.contractStatus.warning.validationState.certificateInvalid} className="gf-all-caps" />;
                 }
