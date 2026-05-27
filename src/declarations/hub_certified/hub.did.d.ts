@@ -1,6 +1,5 @@
 import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
-import type { IDL } from '@dfinity/candid';
 
 export interface AccessRight {
   'permissions' : [] | [Array<Permission>],
@@ -26,18 +25,19 @@ export interface BlockContractTemplateArgs {
   'contract_template_id' : bigint,
   'reason' : string,
 }
+export type BlockContractTemplateError = { 'ContractTemplateNotFound' : null } |
+  { 'PermissionDenied' : null } |
+  { 'ContractTemplateAlreadyBlocked' : null };
+export type BlockContractTemplateResponse = { 'Ok' : null } |
+  { 'Err' : BlockContractTemplateError };
 export interface BlockContractsArgs {
+  'deployment_ids' : BigUint64Array,
   'contract_canister_ids' : Array<Principal>,
   'reason' : string,
 }
 export type BlockContractsError = { 'PermissionDenied' : null };
 export type BlockContractsResponse = { 'Ok' : null } |
   { 'Err' : BlockContractsError };
-export type BlockContractTemplateError = { 'ContractTemplateNotFound' : null } |
-  { 'PermissionDenied' : null } |
-  { 'ContractTemplateAlreadyBlocked' : null };
-export type BlockContractTemplateResponse = { 'Ok' : null } |
-  { 'Err' : BlockContractTemplateError };
 export interface CancelDeploymentArgs {
   'deployment_id' : bigint,
   'reason' : string,
@@ -73,7 +73,7 @@ export interface CanisterStatusResult {
   'settings' : DefiniteCanisterSettings,
   'query_stats' : QueryStats,
   'idle_cycles_burned_per_day' : bigint,
-  'module_hash' : [] | [Uint8Array | number[]],
+  'module_hash' : [] | [Uint8Array],
   'reserved_cycles' : bigint,
 }
 export type CanisterStatusType = { 'stopped' : null } |
@@ -102,6 +102,10 @@ export interface Config {
   'regex_for_contract_principal_parsing' : Array<string>,
   'max_deployment_events_per_chunk' : bigint,
 }
+export type ContractBlockFilter = {
+    'ByDeploymentId' : GetContractActivationCodeArgs
+  } |
+  { 'ByContractCanisterId' : { 'canister_id' : Principal } };
 export interface ContractCertificate {
   'deployer' : Principal,
   'contract_canister' : Principal,
@@ -219,7 +223,7 @@ export type DeploymentProcessingEvent = {
   {
     'ContractWasmChunkUploaded' : {
       'chunk_index' : bigint,
-      'chunk_hash' : Uint8Array | number[],
+      'chunk_hash' : Uint8Array,
     }
   } |
   { 'ContractCertificateGenerated' : null } |
@@ -286,7 +290,7 @@ export type DeploymentState = {
     'UploadContractWasm' : {
       'upload_chunk_size' : bigint,
       'certificate' : SignedContractCertificate,
-      'uploaded_chunk_hashes' : Array<Uint8Array | number[]>,
+      'uploaded_chunk_hashes' : Array<Uint8Array>,
       'upload_chunk_count' : bigint,
     }
   } |
@@ -299,7 +303,7 @@ export type DeploymentState = {
   {
     'InstallContractWasm' : {
       'certificate' : SignedContractCertificate,
-      'uploaded_chunk_hashes' : Array<Uint8Array | number[]>,
+      'uploaded_chunk_hashes' : Array<Uint8Array>,
     }
   } |
   { 'TransferTopUpFundsToCMC' : null } |
@@ -329,9 +333,8 @@ export type FinalizeDeploymentState = { 'Finalized' : null } |
   { 'StartDeploymentFinalization' : null };
 export type GetAccessRightsResponse = { 'Ok' : GetAccessRightsResult };
 export interface GetAccessRightsResult { 'access_rights' : Array<AccessRight> }
-export type GetCanisterMetricsError = { 'PermissionDenied' : null };
 export type GetCanisterMetricsResponse = { 'Ok' : GetCanisterMetricsResult } |
-  { 'Err' : GetCanisterMetricsError };
+  { 'Err' : BlockContractsError };
 export interface GetCanisterMetricsResult { 'metrics' : CanisterMetrics }
 export type GetCanisterStatusError = {
     'ManagementCallError' : { 'reason' : string }
@@ -354,6 +357,8 @@ export type GetContractActivationCodeResponse = {
   } |
   { 'Err' : GetContractActivationCodeError };
 export interface GetContractActivationCodeResult { 'code' : string }
+export interface GetContractBlockStatusArgs { 'filter' : ContractBlockFilter }
+export interface GetContractBlockStatusResult { 'blocked' : [] | [Timestamped] }
 export interface GetContractTemplateArgs { 'contract_template_id' : bigint }
 export type GetContractTemplateError = { 'ContractTemplateNotFound' : null };
 export type GetContractTemplateResponse = { 'Ok' : GetContractTemplateResult } |
@@ -440,7 +445,8 @@ export type HubEventType = {
   { 'ConfigSet' : GetConfigResult } |
   { 'ContractTemplateBlocked' : GetContractTemplateArgs } |
   { 'AccessRightsSet' : GetAccessRightsResult } |
-  { 'ContractTemplateAdded' : GetContractTemplateArgs };
+  { 'ContractTemplateAdded' : GetContractTemplateArgs } |
+  { 'ContractBlocked' : { 'deployment_ids_count' : bigint } };
 export type HubEventsSortingKey = { 'EventId' : null };
 export type IcpConversationRate = {
     'CMC' : { 'xdr_permyriad_per_icp' : bigint, 'timestamp_seconds' : bigint }
@@ -467,12 +473,9 @@ export type InitializeContractCertificateResponse = {
   } |
   { 'Err' : InitializeContractCertificateError };
 export type LedgerAccount = {
-    'Account' : {
-      'owner' : Principal,
-      'subaccount' : [] | [Uint8Array | number[]],
-    }
+    'Account' : { 'owner' : Principal, 'subaccount' : [] | [Uint8Array] }
   } |
-  { 'AccountIdentifier' : { 'slice' : Uint8Array | number[] } };
+  { 'AccountIdentifier' : { 'slice' : Uint8Array } };
 export type LogVisibility = { 'controllers' : null } |
   { 'public' : null } |
   { 'allowed_viewers' : Array<Principal> };
@@ -545,7 +548,7 @@ export type SetUploadWasmGrantError = { 'PermissionDenied' : null } |
 export type SetUploadWasmGrantResponse = { 'Ok' : null } |
   { 'Err' : SetUploadWasmGrantError };
 export interface SignedContractCertificate {
-  'signature' : Uint8Array | number[],
+  'signature' : Uint8Array,
   'contract_certificate' : ContractCertificate,
 }
 export interface SortingDefinition {
@@ -567,10 +570,7 @@ export interface SortingDefinition_3 {
 export type SortingOrder = { 'Descending' : null } |
   { 'Ascending' : null };
 export interface Timestamped { 'value' : string, 'timestamp' : bigint }
-export interface UploadWasmChunkArgs {
-  'first' : boolean,
-  'chunk' : Uint8Array | number[],
-}
+export interface UploadWasmChunkArgs { 'first' : boolean, 'chunk' : Uint8Array }
 export type UploadWasmChunkError = { 'GrantNotFound' : null } |
   { 'WasmLengthOverflow' : null } |
   { 'PermissionDenied' : null };
@@ -587,7 +587,6 @@ export interface ValidateContractCertificateArgs {
 export type ValidateContractCertificateError = {
     'CertificateWrong' : { 'reason' : string }
   } |
-  { 'ContractBlocked' : { 'reason' : string } } |
   { 'ContractInfoUnavailable' : null } |
   { 'InvalidContractReferenceUrl' : null } |
   { 'ValidateContractUrlUnavailable' : { 'reason' : string } } |
@@ -603,16 +602,16 @@ export interface ValidateContractCertificateResult {
 export interface _SERVICE {
   'add_contract_template' : ActorMethod<
     [AddContractTemplateArgs],
-    AddContractTemplateResponse
+    AddContractTemplateResponse,
   >,
-  'block_contracts' : ActorMethod<[BlockContractsArgs], BlockContractsResponse>,
   'block_contract_template' : ActorMethod<
     [BlockContractTemplateArgs],
-    BlockContractTemplateResponse
+    BlockContractTemplateResponse,
   >,
+  'block_contracts' : ActorMethod<[BlockContractsArgs], BlockContractsResponse>,
   'cancel_deployment' : ActorMethod<
     [CancelDeploymentArgs],
-    CancelDeploymentResponse
+    CancelDeploymentResponse,
   >,
   'deploy_contract' : ActorMethod<[DeployContractArgs], DeployContractResponse>,
   'get_access_rights' : ActorMethod<[{}], GetAccessRightsResponse>,
@@ -621,60 +620,62 @@ export interface _SERVICE {
   'get_config' : ActorMethod<[{}], GetConfigResponse>,
   'get_contract_activation_code' : ActorMethod<
     [GetContractActivationCodeArgs],
-    GetContractActivationCodeResponse
+    GetContractActivationCodeResponse,
+  >,
+  'get_contract_block_status' : ActorMethod<
+    [GetContractBlockStatusArgs],
+    GetContractBlockStatusResult,
   >,
   'get_contract_template' : ActorMethod<
     [GetContractTemplateArgs],
-    GetContractTemplateResponse
+    GetContractTemplateResponse,
   >,
   'get_contract_templates' : ActorMethod<
     [GetContractTemplatesArgs],
-    GetContractTemplatesResponse
+    GetContractTemplatesResponse,
   >,
   'get_deployment' : ActorMethod<[GetDeploymentArgs], GetDeploymentResponse>,
   'get_deployment_events' : ActorMethod<
     [GetDeploymentEventsArgs],
-    GetDeploymentEventsResponse
+    GetDeploymentEventsResponse,
   >,
   'get_deployments' : ActorMethod<[GetDeploymentsArgs], GetDeploymentsResponse>,
   'get_hub_events' : ActorMethod<[GetHubEventsArgs], GetHubEventsResponse>,
   'initialize_contract_certificate' : ActorMethod<
     [InitializeContractCertificateArgs],
-    InitializeContractCertificateResponse
+    InitializeContractCertificateResponse,
   >,
   'obtain_contract_certificate' : ActorMethod<
     [ObtainContractCertificateArgs],
-    ObtainContractCertificateResponse
+    ObtainContractCertificateResponse,
   >,
   'process_deployment' : ActorMethod<
     [ProcessDeploymentArgs],
-    ProcessDeploymentResponse
+    ProcessDeploymentResponse,
   >,
   'retry_generate_contract_certificate' : ActorMethod<
     [ProcessDeploymentArgs],
-    CancelDeploymentResponse
+    CancelDeploymentResponse,
   >,
   'set_access_rights' : ActorMethod<
     [SetAccessRightsArgs],
-    SetAccessRightsResponse
+    SetAccessRightsResponse,
   >,
   'set_config' : ActorMethod<[SetConfigArgs], SetConfigResponse>,
   'set_contract_template_retired' : ActorMethod<
     [SetContractTemplateRetiredArgs],
-    SetContractTemplateRetiredResponse
+    SetContractTemplateRetiredResponse,
   >,
   'set_upload_wasm_grant' : ActorMethod<
     [SetUploadWasmGrantArgs],
-    SetUploadWasmGrantResponse
+    SetUploadWasmGrantResponse,
   >,
   'upload_wasm_chunk' : ActorMethod<
     [UploadWasmChunkArgs],
-    UploadWasmChunkResponse
+    UploadWasmChunkResponse,
   >,
   'validate_contract_certificate' : ActorMethod<
     [ValidateContractCertificateArgs],
-    ValidateContractCertificateResponse
+    ValidateContractCertificateResponse,
   >,
 }
-export declare const idlFactory: IDL.InterfaceFactory;
-export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

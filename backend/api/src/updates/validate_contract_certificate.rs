@@ -36,7 +36,6 @@ pub enum ValidateContractCertificateError {
     CertificateUnavailable,
     ContractInfoUnavailable,
     CertificateWrong { reason: String },
-    ContractBlocked { reason: String },
 }
 
 impl From<Result<ValidateContractCertificateResult, ValidateContractCertificateError>>

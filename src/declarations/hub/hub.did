@@ -26,12 +26,6 @@ type BlockContractTemplateArgs = record {
   contract_template_id : nat64;
   reason : text;
 };
-type BlockContractsArgs = record {
-  contract_canister_ids : vec principal;
-  reason : text;
-};
-type BlockContractsError = variant { PermissionDenied };
-type BlockContractsResponse = variant { Ok; Err : BlockContractsError };
 type BlockContractTemplateError = variant {
   ContractTemplateNotFound;
   PermissionDenied;
@@ -41,6 +35,13 @@ type BlockContractTemplateResponse = variant {
   Ok;
   Err : BlockContractTemplateError;
 };
+type BlockContractsArgs = record {
+  deployment_ids : vec nat64;
+  contract_canister_ids : vec principal;
+  reason : text;
+};
+type BlockContractsError = variant { PermissionDenied };
+type BlockContractsResponse = variant { Ok; Err : BlockContractsError };
 type CancelDeploymentArgs = record { deployment_id : nat64; reason : text };
 type CancelDeploymentError = variant {
   DeploymentNotFound;
@@ -77,7 +78,7 @@ type CanisterStatusResult = record {
   settings : DefiniteCanisterSettings;
   query_stats : QueryStats;
   idle_cycles_burned_per_day : nat;
-  module_hash : opt blob;
+  module_hash : opt vec nat8;
   reserved_cycles : nat;
 };
 type CanisterStatusType = variant { stopped; stopping; running };
@@ -103,6 +104,10 @@ type Config = record {
   contract_wasm_upload_chunk_size : nat64;
   regex_for_contract_principal_parsing : vec text;
   max_deployment_events_per_chunk : nat64;
+};
+type ContractBlockFilter = variant {
+  ByDeploymentId : GetContractActivationCodeArgs;
+  ByContractCanisterId : record { canister_id : principal };
 };
 type ContractCertificate = record {
   deployer : principal;
@@ -222,7 +227,10 @@ type DeploymentInformation = record {
 type DeploymentProcessingEvent = variant {
   UseExternalServiceConverting : record { reason : text };
   ContractWasmUploaded;
-  ContractWasmChunkUploaded : record { chunk_index : nat64; chunk_hash : blob };
+  ContractWasmChunkUploaded : record {
+    chunk_index : nat64;
+    chunk_hash : vec nat8;
+  };
   ContractCertificateGenerated;
   ContractCanisterOverManagementCreated : record {
     settings : CanisterSettings;
@@ -276,7 +284,7 @@ type DeploymentState = variant {
   UploadContractWasm : record {
     upload_chunk_size : nat64;
     certificate : SignedContractCertificate;
-    uploaded_chunk_hashes : vec blob;
+    uploaded_chunk_hashes : vec vec nat8;
     upload_chunk_count : nat64;
   };
   WaitingReceiveContractCertificate;
@@ -285,7 +293,7 @@ type DeploymentState = variant {
   GenerateContractCertificate;
   InstallContractWasm : record {
     certificate : SignedContractCertificate;
-    uploaded_chunk_hashes : vec blob;
+    uploaded_chunk_hashes : vec vec nat8;
   };
   TransferTopUpFundsToCMC;
   TransferDeployerFundsToTransitAccount;
@@ -315,10 +323,9 @@ type FinalizeDeploymentState = variant {
 };
 type GetAccessRightsResponse = variant { Ok : GetAccessRightsResult };
 type GetAccessRightsResult = record { access_rights : vec AccessRight };
-type GetCanisterMetricsError = variant { PermissionDenied };
 type GetCanisterMetricsResponse = variant {
   Ok : GetCanisterMetricsResult;
-  Err : GetCanisterMetricsError;
+  Err : BlockContractsError;
 };
 type GetCanisterMetricsResult = record { metrics : CanisterMetrics };
 type GetCanisterStatusError = variant {
@@ -344,6 +351,8 @@ type GetContractActivationCodeResponse = variant {
   Err : GetContractActivationCodeError;
 };
 type GetContractActivationCodeResult = record { code : text };
+type GetContractBlockStatusArgs = record { filter : ContractBlockFilter };
+type GetContractBlockStatusResult = record { blocked : opt Timestamped };
 type GetContractTemplateArgs = record { contract_template_id : nat64 };
 type GetContractTemplateError = variant { ContractTemplateNotFound };
 type GetContractTemplateResponse = variant {
@@ -440,6 +449,7 @@ type HubEventType = variant {
   ContractTemplateBlocked : GetContractTemplateArgs;
   AccessRightsSet : GetAccessRightsResult;
   ContractTemplateAdded : GetContractTemplateArgs;
+  ContractBlocked : record { deployment_ids_count : nat64 };
 };
 type HubEventsSortingKey = variant { EventId };
 type IcpConversationRate = variant {
@@ -467,8 +477,8 @@ type InitializeContractCertificateResponse = variant {
   Err : InitializeContractCertificateError;
 };
 type LedgerAccount = variant {
-  Account : record { owner : principal; subaccount : opt blob };
-  AccountIdentifier : record { slice : blob };
+  Account : record { owner : principal; subaccount : opt vec nat8 };
+  AccountIdentifier : record { slice : vec nat8 };
 };
 type LogVisibility = variant {
   controllers;
@@ -546,7 +556,7 @@ type SetUploadWasmGrantArgs = record { grant : opt UploadWasmGrant };
 type SetUploadWasmGrantError = variant { PermissionDenied; WasmLengthIsTooBig };
 type SetUploadWasmGrantResponse = variant { Ok; Err : SetUploadWasmGrantError };
 type SignedContractCertificate = record {
-  signature : blob;
+  signature : vec nat8;
   contract_certificate : ContractCertificate;
 };
 type SortingDefinition = record {
@@ -567,7 +577,7 @@ type SortingDefinition_3 = record {
 };
 type SortingOrder = variant { Descending; Ascending };
 type Timestamped = record { value : text; timestamp : nat64 };
-type UploadWasmChunkArgs = record { first : bool; chunk : blob };
+type UploadWasmChunkArgs = record { first : bool; chunk : vec nat8 };
 type UploadWasmChunkError = variant {
   GrantNotFound;
   WasmLengthOverflow;
@@ -584,7 +594,6 @@ type ValidateContractCertificateArgs = record {
 };
 type ValidateContractCertificateError = variant {
   CertificateWrong : record { reason : text };
-  ContractBlocked : record { reason : text };
   ContractInfoUnavailable;
   InvalidContractReferenceUrl;
   ValidateContractUrlUnavailable : record { reason : text };
@@ -602,10 +611,10 @@ service : {
   add_contract_template : (AddContractTemplateArgs) -> (
       AddContractTemplateResponse,
     );
-  block_contracts : (BlockContractsArgs) -> (BlockContractsResponse);
   block_contract_template : (BlockContractTemplateArgs) -> (
       BlockContractTemplateResponse,
     );
+  block_contracts : (BlockContractsArgs) -> (BlockContractsResponse);
   cancel_deployment : (CancelDeploymentArgs) -> (CancelDeploymentResponse);
   deploy_contract : (DeployContractArgs) -> (DeployContractResponse);
   get_access_rights : (record {}) -> (GetAccessRightsResponse) query;
@@ -614,6 +623,9 @@ service : {
   get_config : (record {}) -> (GetConfigResponse) query;
   get_contract_activation_code : (GetContractActivationCodeArgs) -> (
       GetContractActivationCodeResponse,
+    ) query;
+  get_contract_block_status : (GetContractBlockStatusArgs) -> (
+      GetContractBlockStatusResult,
     ) query;
   get_contract_template : (GetContractTemplateArgs) -> (
       GetContractTemplateResponse,

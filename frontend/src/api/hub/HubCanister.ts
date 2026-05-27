@@ -8,6 +8,7 @@ import {
     type CancelDeploymentArgs,
     type DeployContractArgs,
     type DeploymentFilter,
+    type GetContractBlockStatusArgs,
     type GetContractTemplatesArgs,
     type GetDeploymentEventsArgs,
     type GetDeploymentsArgs,
@@ -141,6 +142,10 @@ export class HubAnonymousCanister extends Canister<HubService> {
 
     getConfig = async () => {
         return await this.caller({}).get_config({});
+    };
+
+    getContractBlockStatus = async (params: GetContractBlockStatusArgs) => {
+        return await this.caller({}).get_contract_block_status(params);
     };
 
     getAccessRights = async () => {

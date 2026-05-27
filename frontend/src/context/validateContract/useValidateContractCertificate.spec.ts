@@ -2,17 +2,16 @@ import {describe, expect, it} from 'vitest';
 import {mapContractValidationState} from './useValidateContractCertificate';
 
 describe('mapContractValidationState', () => {
-    it('maps ContractBlocked into a dedicated blocked state', () => {
-        const validationState = mapContractValidationState({ContractBlocked: {reason: 'policy'}}, undefined);
+    it('maps CertificateWrong into a fatal validation state', () => {
+        const validationState = mapContractValidationState({CertificateWrong: {reason: 'policy'}}, undefined);
 
         expect(validationState).toEqual({
-            type: 'contractBlocked',
-            reason: 'policy'
+            type: 'validationFatalError'
         });
     });
 
-    it('keeps blocked contracts unsafe by not mapping them to valid states', () => {
-        const validationState = mapContractValidationState({ContractBlocked: {reason: 'policy'}}, undefined);
+    it('keeps certificate fatal errors away from valid states', () => {
+        const validationState = mapContractValidationState({CertificateWrong: {reason: 'policy'}}, undefined);
 
         expect(validationState?.type).not.toBe('certificateValidAndActive');
     });

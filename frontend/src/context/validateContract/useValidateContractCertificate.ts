@@ -24,10 +24,6 @@ type ContractValidationState =
           responseError: ResponseError;
       }
     | {
-          type: 'contractBlocked';
-          reason: string;
-      }
-    | {
           type: 'validationFatalError';
       };
 
@@ -111,12 +107,6 @@ export const mapContractValidationState = (
             return {
                 type: 'backendErrorWithRetry',
                 responseError
-            };
-        }
-        if (hasProperty(responseError, 'ContractBlocked')) {
-            return {
-                type: 'contractBlocked',
-                reason: responseError.ContractBlocked.reason
             };
         }
         return {

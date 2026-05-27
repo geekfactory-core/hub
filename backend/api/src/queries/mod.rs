@@ -1,6 +1,7 @@
 pub mod get_access_rights;
 pub mod get_config;
 pub mod get_contract_activation_code;
+pub mod get_contract_block_status;
 pub mod get_contract_template;
 pub mod get_contract_templates;
 pub mod get_deployment;

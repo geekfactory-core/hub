@@ -217,7 +217,8 @@ const rawI18 = {
                 title: 'Contract',
                 deploying: 'Deploying',
                 deployed: 'Deployed',
-                terminated: 'Terminated'
+                terminated: 'Terminated',
+                blocked: 'Blocked'
             },
             activationState: {
                 title: 'Activation',
@@ -238,7 +239,9 @@ const rawI18 = {
                 },
                 contractState: {
                     deploying: 'This contract is being deployed.',
-                    terminated: 'This contract was terminated by the owner and is no longer available.'
+                    terminated: 'This contract was terminated by the owner and is no longer available.',
+                    blocked: (reason: string) => `This contract can no longer be trusted for secure operations because it was blocked: ${reason}`,
+                    unableToLoadBlockedState: 'Unable to load contract blocked state.'
                 },
                 activationState: {
                     activationRequired: 'This contract has not been activated.',
@@ -246,7 +249,6 @@ const rawI18 = {
                 },
                 validationState: {
                     certificateExpired: 'This contract can no longer be trusted for secure operations because its certificate has expired!',
-                    contractBlocked: (reason: string) => `This contract can no longer be trusted for secure operations because it was blocked: ${reason}`,
                     unableToValidate: 'Unable to validate certificate.',
                     certificateInvalid: 'This contract can no longer be trusted for secure operations because its certificate is invalid!',
                     unableToLoad: 'Unable to load certificate information.'
@@ -341,7 +343,8 @@ const rawI18 = {
                 columnTitle: 'Status',
                 deploying: 'Deploying',
                 deployed: 'Deployed',
-                terminated: 'Terminated'
+                terminated: 'Terminated',
+                blocked: 'Blocked'
             }
         }
     },

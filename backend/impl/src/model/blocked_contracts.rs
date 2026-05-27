@@ -1,6 +1,6 @@
-use candid::Principal;
 use common_canister_impl::stable_structures::CBor;
-use common_canister_types::TimestampMillis;
+use common_canister_types::{TimestampMillis, Timestamped};
+use hub_canister_api::types::DeploymentId;
 use ic_stable_structures::{
     memory_manager::VirtualMemory, DefaultMemoryImpl, RestrictedMemory, StableLog,
 };
@@ -13,7 +13,7 @@ type ContractBlocksLog = StableLog<CBor<ContractBlockBatch>, VM, VM>;
 pub struct ContractBlockBatch {
     pub blocked_at: TimestampMillis,
     pub reason: String,
-    pub contract_canister_ids: Vec<Principal>,
+    pub deployment_ids: Vec<DeploymentId>,
 }
 
 pub struct BlockedContractsStorage {
@@ -31,16 +31,19 @@ impl BlockedContractsStorage {
         &mut self,
         blocked_at: TimestampMillis,
         reason: String,
-        contract_canister_ids: Vec<Principal>,
+        deployment_ids: Vec<DeploymentId>,
     ) {
         let record = CBor(ContractBlockBatch {
             blocked_at,
             reason,
-            contract_canister_ids,
+            deployment_ids,
         });
 
         if let Err(error) = self.contract_blocks.append(&record) {
-            ic_cdk::println!("Hub: failed to append blocked contracts {:?}: {error:?}", *record);
+            ic_cdk::println!(
+                "Hub: failed to append blocked contracts {:?}: {error:?}",
+                *record
+            );
         }
     }
 
@@ -52,21 +55,21 @@ impl BlockedContractsStorage {
         self.contract_blocks.get(idx)
     }
 
-    pub(crate) fn find_contract_block_reason(
+    pub(crate) fn find_deployment_block(
         &self,
-        contract_canister_id: &Principal,
-    ) -> Option<String> {
+        deployment_id: &DeploymentId,
+    ) -> Option<Timestamped<String>> {
         for idx in 0..self.contract_blocks.len() {
             let Some(record) = self.contract_blocks.get(idx) else {
                 continue;
             };
 
             if record
-                .contract_canister_ids
+                .deployment_ids
                 .iter()
-                .any(|blocked_id| blocked_id == contract_canister_id)
+                .any(|blocked_id| blocked_id == deployment_id)
             {
-                return Some(record.reason.clone());
+                return Some(Timestamped::new(record.blocked_at, record.reason.clone()));
             }
         }
 

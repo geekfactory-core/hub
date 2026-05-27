@@ -1,3 +1,4 @@
+use crate::types::DeploymentId;
 use candid::{CandidType, Principal};
 use serde::Deserialize;
 
@@ -6,6 +7,7 @@ pub type Response = BlockContractsResponse;
 
 #[derive(CandidType, Deserialize, Debug)]
 pub struct BlockContractsArgs {
+    pub deployment_ids: Vec<DeploymentId>,
     pub contract_canister_ids: Vec<Principal>,
     pub reason: String,
 }

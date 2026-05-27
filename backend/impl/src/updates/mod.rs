@@ -1,6 +1,6 @@
 pub mod add_contract_template;
-pub mod block_contracts;
 pub mod block_contract_template;
+pub mod block_contracts;
 pub mod cancel_deployment;
 pub mod deploy_contract;
 pub mod initialize_contract_certificate;

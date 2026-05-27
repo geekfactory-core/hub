@@ -36,6 +36,7 @@ type BlockContractTemplateResponse = variant {
   Err : BlockContractTemplateError;
 };
 type BlockContractsArgs = record {
+  deployment_ids : vec nat64;
   contract_canister_ids : vec principal;
   reason : text;
 };
@@ -103,6 +104,10 @@ type Config = record {
   contract_wasm_upload_chunk_size : nat64;
   regex_for_contract_principal_parsing : vec text;
   max_deployment_events_per_chunk : nat64;
+};
+type ContractBlockFilter = variant {
+  ByDeploymentId : GetContractActivationCodeArgs;
+  ByContractCanisterId : record { canister_id : principal };
 };
 type ContractCertificate = record {
   deployer : principal;
@@ -343,6 +348,8 @@ type GetContractActivationCodeResponse = variant {
   Err : GetContractActivationCodeError;
 };
 type GetContractActivationCodeResult = record { code : text };
+type GetContractBlockStatusArgs = record { filter : ContractBlockFilter };
+type GetContractBlockStatusResult = record { blocked : opt Timestamped };
 type GetContractTemplateArgs = record { contract_template_id : nat64 };
 type GetContractTemplateError = variant { ContractTemplateNotFound };
 type GetContractTemplateResponse = variant {
@@ -439,7 +446,7 @@ type HubEventType = variant {
   ContractTemplateBlocked : GetContractTemplateArgs;
   AccessRightsSet : GetAccessRightsResult;
   ContractTemplateAdded : GetContractTemplateArgs;
-  ContractBlocked : record { contract_canister_ids_count : nat64 };
+  ContractBlocked : record { deployment_ids_count : nat64 };
 };
 type HubEventsSortingKey = variant { EventId };
 type IcpConversationRate = variant {
@@ -588,7 +595,6 @@ type ValidateContractCertificateError = variant {
   InvalidContractReferenceUrl;
   ValidateContractUrlUnavailable : record { reason : text };
   CertificateUnavailable;
-  ContractBlocked : record { reason : text };
 };
 type ValidateContractCertificateResponse = variant {
   Ok : ValidateContractCertificateResult;
@@ -614,6 +620,9 @@ service : {
   get_config : (record {}) -> (GetConfigResponse) query;
   get_contract_activation_code : (GetContractActivationCodeArgs) -> (
       GetContractActivationCodeResponse,
+    ) query;
+  get_contract_block_status : (GetContractBlockStatusArgs) -> (
+      GetContractBlockStatusResult,
     ) query;
   get_contract_template : (GetContractTemplateArgs) -> (
       GetContractTemplateResponse,

@@ -18,6 +18,7 @@ export const ContractStatusWarning = () => {
             <SuccessComponent />
             <ContractTemplateWarning />
             <ContractDeploymentWarning />
+            <ContractBlockWarning />
             <ContractActivationWarning />
             <ContractValidationWarning />
         </Flex>
@@ -39,8 +40,8 @@ const SuccessComponent = () => {
 
 const ContractTemplateWarning = () => {
     const {dataAvailability} = useContractTemplateContextSafe();
-    const {contractActivationDataAvailability, contractValidationDataAvailability} = useContractStatusContext();
-    if (contractActivationDataAvailability.type == 'loading' || contractValidationDataAvailability.type == 'loading') {
+    const {contractActivationDataAvailability, contractValidationDataAvailability, contractBlockDataAvailability} = useContractStatusContext();
+    if (contractActivationDataAvailability.type == 'loading' || contractValidationDataAvailability.type == 'loading' || contractBlockDataAvailability.type == 'loading') {
         return null;
     }
     if (dataAvailability.type == 'blocked') {
@@ -68,6 +69,44 @@ const ContractDeploymentWarning = () => {
         }
         default: {
             const exhaustiveCheck: never = type;
+            applicationLogger.error(exhaustiveCheckFailedMessage, exhaustiveCheck);
+            return null;
+        }
+    }
+};
+
+const ContractBlockWarning = () => {
+    const {contractDeploymentState, contractBlockDataAvailability, contractBlockStateFeature, fetchNotAvailableData} = useContractStatusContext();
+    if (isNullish(contractDeploymentState) || contractDeploymentState.type != 'success') {
+        return null;
+    }
+
+    switch (contractBlockDataAvailability.type) {
+        case 'available': {
+            if (contractBlockDataAvailability.contractBlockState.type == 'blocked') {
+                return (
+                    <ErrorAlert
+                        message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockDataAvailability.contractBlockState.reason)}
+                        className="gf-all-caps"
+                    />
+                );
+            }
+            return null;
+        }
+        case 'notAvailable': {
+            return (
+                <ErrorAlertWithAction
+                    message={i18.deployment.contractStatus.warning.contractState.unableToLoadBlockedState}
+                    action={<AlertActionButton onClick={fetchNotAvailableData} loading={contractBlockStateFeature.status.inProgress} />}
+                />
+            );
+        }
+        case 'loading':
+        case 'notApplicable': {
+            return null;
+        }
+        default: {
+            const exhaustiveCheck: never = contractBlockDataAvailability.type;
             applicationLogger.error(exhaustiveCheckFailedMessage, exhaustiveCheck);
             return null;
         }
@@ -156,16 +195,6 @@ const ContractValidationWarning = () => {
                         <ErrorAlertWithAction
                             message={i18.deployment.contractStatus.warning.validationState.unableToValidate}
                             action={<AlertActionButton onClick={fetchNotAvailableData} loading={contractValidationStateFeature.status.inProgress} />}
-                        />
-                    );
-                }
-                case 'contractBlocked': {
-                    return (
-                        <ErrorAlert
-                            message={i18.deployment.contractStatus.warning.validationState.contractBlocked(
-                                contractValidationDataAvailability.validationState.reason
-                            )}
-                            className="gf-all-caps"
                         />
                     );
                 }

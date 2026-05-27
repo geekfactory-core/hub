@@ -5,6 +5,7 @@ fn main() {
     generate_query_candid_method!(common_canister_api, get_canister_metrics);
     generate_query_candid_method!(hub_canister_api, get_access_rights);
     generate_query_candid_method!(hub_canister_api, get_config);
+    generate_query_candid_method!(hub_canister_api, get_contract_block_status);
     generate_query_candid_method!(hub_canister_api, get_contract_template);
     generate_query_candid_method!(hub_canister_api, get_contract_templates);
     generate_query_candid_method!(hub_canister_api, get_hub_events);
