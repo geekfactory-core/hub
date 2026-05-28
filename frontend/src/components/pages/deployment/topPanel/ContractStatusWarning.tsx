@@ -40,8 +40,8 @@ const SuccessComponent = () => {
 
 const ContractTemplateWarning = () => {
     const {dataAvailability} = useContractTemplateContextSafe();
-    const {contractActivationDataAvailability, contractValidationDataAvailability, contractBlockDataAvailability} = useContractStatusContext();
-    if (contractActivationDataAvailability.type == 'loading' || contractValidationDataAvailability.type == 'loading' || contractBlockDataAvailability.type == 'loading') {
+    const {contractActivationDataAvailability, contractValidationDataAvailability} = useContractStatusContext();
+    if (contractActivationDataAvailability.type == 'loading' || contractValidationDataAvailability.type == 'loading') {
         return null;
     }
     if (dataAvailability.type == 'blocked') {
@@ -76,41 +76,16 @@ const ContractDeploymentWarning = () => {
 };
 
 const ContractBlockWarning = () => {
-    const {contractDeploymentState, contractBlockDataAvailability, contractBlockStateFeature, fetchNotAvailableData} = useContractStatusContext();
+    const {contractDeploymentState, contractBlocked, contractBlockedReason} = useContractStatusContext();
     if (isNullish(contractDeploymentState) || contractDeploymentState.type != 'success') {
         return null;
     }
 
-    switch (contractBlockDataAvailability.type) {
-        case 'available': {
-            if (contractBlockDataAvailability.contractBlockState.type == 'blocked') {
-                return (
-                    <ErrorAlert
-                        message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockDataAvailability.contractBlockState.reason)}
-                        className="gf-all-caps"
-                    />
-                );
-            }
-            return null;
-        }
-        case 'notAvailable': {
-            return (
-                <ErrorAlertWithAction
-                    message={i18.deployment.contractStatus.warning.contractState.unableToLoadBlockedState}
-                    action={<AlertActionButton onClick={fetchNotAvailableData} loading={contractBlockStateFeature.status.inProgress} />}
-                />
-            );
-        }
-        case 'loading':
-        case 'notApplicable': {
-            return null;
-        }
-        default: {
-            const exhaustiveCheck: never = contractBlockDataAvailability.type;
-            applicationLogger.error(exhaustiveCheckFailedMessage, exhaustiveCheck);
-            return null;
-        }
+    if (contractBlocked && !isNullish(contractBlockedReason)) {
+        return <ErrorAlert message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockedReason)} className="gf-all-caps" />;
     }
+
+    return null;
 };
 
 const ContractActivationWarning = () => {

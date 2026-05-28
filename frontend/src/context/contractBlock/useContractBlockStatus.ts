@@ -4,10 +4,10 @@ import {toError} from 'frontend/src/utils/core/error/toError';
 import type {DataAvailability, Feature} from 'frontend/src/utils/core/feature/feature';
 import {reusePromiseWrapper} from 'frontend/src/utils/core/promise/reusePromise';
 import {useMemo} from 'react';
-import type {GetContractBlockStatusArgs, GetContractBlockStatusResult} from 'src/declarations/hub/hub.did';
+import type {GetContractBlockStatusArgs} from 'src/declarations/hub/hub.did';
 import {apiLogger} from '../logger/logger';
 
-type ContractBlockState =
+export type ContractBlockState =
     | {
           type: 'active';
       }
@@ -23,13 +23,13 @@ type Parameters = GetContractBlockStatusArgs;
 
 type Context = {
     contractBlockDataAvailability: ContractBlockDataAvailability | undefined;
+    contractBlockState: ContractBlockState | undefined;
     fetchContractBlockStatus: (parameters: Parameters) => Promise<void>;
     feature: Feature;
-    result: GetContractBlockStatusResult | undefined;
 };
 
 export const useContractBlockStatus = () => {
-    const {call, data: result, feature} = useICCanisterCallHubAnonymous('getContractBlockStatus');
+    const {call, data, feature} = useICCanisterCallHubAnonymous('getContractBlockStatus');
 
     const fetchContractBlockStatus = useMemo(
         () =>
@@ -58,8 +58,8 @@ export const useContractBlockStatus = () => {
                 error: toError(feature.error.error)
             };
         }
-        if (nonNullish(result)) {
-            const blocked = fromNullable(result.blocked);
+        if (nonNullish(data)) {
+            const blocked = fromNullable(data.blocked);
             if (nonNullish(blocked)) {
                 return {
                     type: 'available',
@@ -81,7 +81,13 @@ export const useContractBlockStatus = () => {
             type: 'notAvailable',
             error: toError()
         };
-    }, [feature, result]);
+    }, [data, feature]);
 
-    return useMemo<Context>(() => ({contractBlockDataAvailability, fetchContractBlockStatus, feature, result}), [contractBlockDataAvailability, fetchContractBlockStatus, feature, result]);
+    const contractBlockState = useMemo<ContractBlockState | undefined>(() => {
+        if (contractBlockDataAvailability?.type == 'available') {
+            return contractBlockDataAvailability.contractBlockState;
+        }
+    }, [contractBlockDataAvailability]);
+
+    return useMemo<Context>(() => ({contractBlockDataAvailability, contractBlockState, fetchContractBlockStatus, feature}), [contractBlockDataAvailability, contractBlockState, fetchContractBlockStatus, feature]);
 };

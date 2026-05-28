@@ -39,7 +39,7 @@ const TemplateStateStep = () => {
 
 const ContractStateStep = () => {
     const {isOwnedByCurrentUser} = useDeploymentContextSafe();
-    const {contractDeploymentState, contractBlockDataAvailability, contractBlockStateFeature} = useContractStatusContext();
+    const {contractDeploymentState, contractBlocked} = useContractStatusContext();
     const {shouldProcessManually} = useDeploymentProcessorContext();
 
     const {icon, status, color} = useMemo<StatusProto>(() => {
@@ -52,23 +52,7 @@ const ContractStateStep = () => {
                 return {icon: 'loading', status: i18.deployment.contractStatus.contractState.deploying, color: 'gray'};
             }
             case 'success': {
-                switch (contractBlockDataAvailability.type) {
-                    case 'loading':
-                        return loadingStatusProto;
-                    case 'available':
-                        return contractBlockDataAvailability.contractBlockState.type == 'blocked'
-                            ? {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.blocked, color: 'red'}
-                            : {icon: 'success', status: i18.deployment.contractStatus.contractState.deployed, color: 'green'};
-                    case 'notAvailable':
-                        return failedToLoadStatusProto(contractBlockStateFeature.status.inProgress);
-                    case 'notApplicable':
-                        return notApplicableStatusProto;
-                    default: {
-                        const exhaustiveCheck: never = contractBlockDataAvailability.type;
-                        applicationLogger.error(exhaustiveCheckFailedMessage, exhaustiveCheck);
-                        return invalidStateStatusProto;
-                    }
-                }
+                return contractBlocked ? {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.blocked, color: 'red'} : {icon: 'success', status: i18.deployment.contractStatus.contractState.deployed, color: 'green'};
             }
             case 'terminated': {
                 return {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.terminated, color: 'red'};
@@ -84,7 +68,7 @@ const ContractStateStep = () => {
                 return invalidStateStatusProto;
             }
         }
-    }, [contractBlockDataAvailability, contractBlockStateFeature.status.inProgress, contractDeploymentState?.type, isOwnedByCurrentUser, shouldProcessManually]);
+    }, [contractBlocked, contractDeploymentState?.type, isOwnedByCurrentUser, shouldProcessManually]);
 
     return <StepCard icon={icon} title={i18.deployment.contractStatus.contractState.title} status={status} color={color} />;
 };

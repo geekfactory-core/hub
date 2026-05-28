@@ -1,8 +1,8 @@
 import type {Principal} from '@dfinity/principal';
 import {fromNullable, isNullish, nonNullish} from '@dfinity/utils';
+import {useContractBlockStatusContextSafe} from 'frontend/src/context/contractBlock/ContractBlockStatusProvider';
 import {useContractTemplateContextSafe} from 'frontend/src/context/contractTemplate/ContractTemplateProvider';
 import {useContractActivationState, type ContractActivationDataAvailability} from 'frontend/src/context/contractTemplate/useContractActivationState';
-import {useContractBlockStatus, type ContractBlockDataAvailability} from 'frontend/src/context/contractBlock/useContractBlockStatus';
 import {useDeploymentContextSafe} from 'frontend/src/context/deployment/DeploymentProvider';
 import {getContractDeploymentState, type ContractDeploymentState} from 'frontend/src/context/deployment/deploymentInformationUtils';
 import {useValidateContractCertificate, type ContractValidationDataAvailability} from 'frontend/src/context/validateContract/useValidateContractCertificate';
@@ -11,7 +11,6 @@ import {createContext, useCallback, useContext, useEffect, useMemo, type PropsWi
 
 type ContractActivationDataAvailabilityExt = ContractActivationDataAvailability | {type: 'notApplicable'} | {type: 'notRequired'};
 type ContractValidationDataAvailabilityExt = ContractValidationDataAvailability | {type: 'notApplicable'};
-type ContractBlockDataAvailabilityExt = ContractBlockDataAvailability | {type: 'notApplicable'};
 
 type Context = {
     contractDeploymentState: ContractDeploymentState | undefined;
@@ -19,8 +18,8 @@ type Context = {
     contractActivationStateFeature: Feature;
     contractValidationDataAvailability: ContractValidationDataAvailabilityExt;
     contractValidationStateFeature: Feature;
-    contractBlockDataAvailability: ContractBlockDataAvailabilityExt;
-    contractBlockStateFeature: Feature;
+    contractBlocked: boolean;
+    contractBlockedReason: string | undefined;
     isItSafeToUseContract: boolean;
     fetchContractActivationState: () => Promise<void>;
     fetchNotAvailableData: () => Promise<void>;
@@ -43,6 +42,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         }
     } = useContractTemplateContextSafe();
     const {deployment} = useDeploymentContextSafe();
+    const {contractBlockState} = useContractBlockStatusContextSafe();
     const contractCanister = useMemo<Principal | undefined>(() => fromNullable(deployment.contract_canister), [deployment.contract_canister]);
     const contractCanisterId = useMemo<string | undefined>(() => contractCanister?.toText(), [contractCanister]);
 
@@ -142,39 +142,8 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         validateContract();
     }, [validateContract]);
 
-    /**
-    ==========================================
-    Contract Block State
-    ==========================================
-    */
-    const shouldFetchContractBlockState = contractDeploymentState?.type == 'success';
-    const {contractBlockDataAvailability: contractBlockDataAvailabilityRaw, feature: contractBlockStateFeature, fetchContractBlockStatus} = useContractBlockStatus();
-
-    const contractBlockDataAvailability = useMemo<ContractBlockDataAvailabilityExt>(() => {
-        if (!shouldFetchContractBlockState) {
-            return {type: 'notApplicable'};
-        }
-        if (isNullish(contractBlockDataAvailabilityRaw)) {
-            return {type: 'loading'};
-        }
-        return contractBlockDataAvailabilityRaw;
-    }, [contractBlockDataAvailabilityRaw, shouldFetchContractBlockState]);
-
-    const fetchCurrentContractBlockStatus = useCallback(() => {
-        if (shouldFetchContractBlockState) {
-            fetchContractBlockStatus({
-                filter: {
-                    ByDeploymentId: {
-                        deployment_id: deployment.deployment_id
-                    }
-                }
-            });
-        }
-    }, [deployment.deployment_id, fetchContractBlockStatus, shouldFetchContractBlockState]);
-
-    useEffect(() => {
-        fetchCurrentContractBlockStatus();
-    }, [fetchCurrentContractBlockStatus]);
+    const contractBlocked = contractBlockState.type == 'blocked';
+    const contractBlockedReason = contractBlockState.type == 'blocked' ? contractBlockState.reason : undefined;
 
     const isItSafeToUseContract = useMemo(() => {
         if (isNullish(contractDeploymentState)) {
@@ -182,7 +151,6 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             return false;
         }
         const contractDeployed = contractDeploymentState.type == 'success';
-        const contractBlocked = contractBlockDataAvailability.type == 'available' && contractBlockDataAvailability.contractBlockState.type == 'blocked';
         const contractActivationNotRequired = contractActivationDataAvailability.type == 'notRequired';
         const contractActivated = contractActivationDataAvailability.type == 'available' && contractActivationDataAvailability.activationState.type == 'activated';
         const certificateValidAndActive = contractValidationDataAvailability.type == 'available' && contractValidationDataAvailability.validationState.type == 'certificateValidAndActive';
@@ -192,7 +160,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         }
 
         return false;
-    }, [contractDeploymentState, contractBlockDataAvailability, contractActivationDataAvailability, contractValidationDataAvailability]);
+    }, [contractDeploymentState, contractBlocked, contractActivationDataAvailability, contractValidationDataAvailability]);
 
     /**
     ==========================================
@@ -204,16 +172,13 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         if (contractActivationDataAvailability.type == 'notAvailable') {
             fetchContractActivationState();
         }
-        if (contractBlockDataAvailability.type == 'notAvailable') {
-            fetchCurrentContractBlockStatus();
-        }
         if (
             contractValidationDataAvailability.type == 'notAvailable' ||
             (contractValidationDataAvailability.type == 'available' && contractValidationDataAvailability.validationState.type == 'backendErrorWithRetry')
         ) {
             validateContract();
         }
-    }, [contractActivationDataAvailability.type, contractBlockDataAvailability.type, contractValidationDataAvailability, fetchContractActivationState, fetchCurrentContractBlockStatus, validateContract]);
+    }, [contractActivationDataAvailability.type, contractValidationDataAvailability, fetchContractActivationState, validateContract]);
 
     const value = useMemo(
         () => ({
@@ -222,8 +187,8 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
-            contractBlockDataAvailability,
-            contractBlockStateFeature,
+            contractBlocked,
+            contractBlockedReason,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData
@@ -234,8 +199,8 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
-            contractBlockDataAvailability,
-            contractBlockStateFeature,
+            contractBlocked,
+            contractBlockedReason,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData
