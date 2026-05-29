@@ -39,8 +39,10 @@ const TemplateStateStep = () => {
 
 const ContractStateStep = () => {
     const {isOwnedByCurrentUser} = useDeploymentContextSafe();
-    const {contractDeploymentState, contractBlocked} = useContractStatusContext();
+    const {contractDeploymentState, contractBlockState} = useContractStatusContext();
     const {shouldProcessManually} = useDeploymentProcessorContext();
+
+    const contractBlocked = contractBlockState.type == 'blocked';
 
     const {icon, status, color} = useMemo<StatusProto>(() => {
         const type = contractDeploymentState?.type;
@@ -52,7 +54,10 @@ const ContractStateStep = () => {
                 return {icon: 'loading', status: i18.deployment.contractStatus.contractState.deploying, color: 'gray'};
             }
             case 'success': {
-                return contractBlocked ? {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.blocked, color: 'red'} : {icon: 'success', status: i18.deployment.contractStatus.contractState.deployed, color: 'green'};
+                if (contractBlocked) {
+                    return {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.blocked, color: 'red'};
+                }
+                return {icon: 'success', status: i18.deployment.contractStatus.contractState.deployed, color: 'green'};
             }
             case 'terminated': {
                 return {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.terminated, color: 'red'};

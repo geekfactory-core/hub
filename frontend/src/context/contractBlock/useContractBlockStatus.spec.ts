@@ -1,6 +1,6 @@
-import {describe, expect, it} from 'vitest';
 import {fromNullable} from '@dfinity/utils';
 import type {GetContractBlockStatusResult} from 'src/declarations/hub/hub.did';
+import {describe, expect, it} from 'vitest';
 
 const mapBlockedState = (result: GetContractBlockStatusResult) => {
     const blocked = fromNullable(result.blocked);

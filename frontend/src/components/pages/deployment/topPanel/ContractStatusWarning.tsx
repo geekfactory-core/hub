@@ -76,15 +76,13 @@ const ContractDeploymentWarning = () => {
 };
 
 const ContractBlockWarning = () => {
-    const {contractDeploymentState, contractBlocked, contractBlockedReason} = useContractStatusContext();
+    const {contractDeploymentState, contractBlockState} = useContractStatusContext();
     if (isNullish(contractDeploymentState) || contractDeploymentState.type != 'success') {
         return null;
     }
-
-    if (contractBlocked && !isNullish(contractBlockedReason)) {
-        return <ErrorAlert message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockedReason)} className="gf-all-caps" />;
+    if (contractBlockState.type == 'blocked') {
+        return <ErrorAlert message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockState.reason)} className="gf-all-caps" />;
     }
-
     return null;
 };
 

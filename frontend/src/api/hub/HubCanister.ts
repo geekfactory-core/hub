@@ -4,7 +4,6 @@ import {Canister, createServices} from '@dfinity/utils';
 import {
     idlFactory,
     type _SERVICE,
-    type BlockContractsArgs,
     type CancelDeploymentArgs,
     type DeployContractArgs,
     type DeploymentFilter,
@@ -48,10 +47,6 @@ export class HubCanister extends Canister<HubService> {
 
     deployContract = async (params: DeployContractArgs) => {
         return await this.caller({}).deploy_contract(params);
-    };
-
-    blockContracts = async (params: BlockContractsArgs) => {
-        return await this.caller({}).block_contracts(params);
     };
 
     cancelDeployment = async (params: CancelDeploymentArgs) => {

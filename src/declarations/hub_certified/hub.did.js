@@ -751,12 +751,12 @@ export const idlFactory = ({ IDL }) => {
     'get_contract_block_status' : IDL.Func(
         [GetContractBlockStatusArgs],
         [GetContractBlockStatusResponse],
-        ['query'],
+        [],
       ),
     'get_contract_template' : IDL.Func(
         [GetContractTemplateArgs],
         [GetContractTemplateResponse],
-        ['query'],
+        [],
       ),
     'get_contract_templates' : IDL.Func(
         [GetContractTemplatesArgs],
@@ -766,7 +766,7 @@ export const idlFactory = ({ IDL }) => {
     'get_deployment' : IDL.Func(
         [GetDeploymentArgs],
         [GetDeploymentResponse],
-        ['query'],
+        [],
       ),
     'get_deployment_events' : IDL.Func(
         [GetDeploymentEventsArgs],

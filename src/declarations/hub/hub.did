@@ -78,7 +78,7 @@ type CanisterStatusResult = record {
   settings : DefiniteCanisterSettings;
   query_stats : QueryStats;
   idle_cycles_burned_per_day : nat;
-  module_hash : opt vec nat8;
+  module_hash : opt blob;
   reserved_cycles : nat;
 };
 type CanisterStatusType = variant { stopped; stopping; running };
@@ -227,10 +227,7 @@ type DeploymentInformation = record {
 type DeploymentProcessingEvent = variant {
   UseExternalServiceConverting : record { reason : text };
   ContractWasmUploaded;
-  ContractWasmChunkUploaded : record {
-    chunk_index : nat64;
-    chunk_hash : vec nat8;
-  };
+  ContractWasmChunkUploaded : record { chunk_index : nat64; chunk_hash : blob };
   ContractCertificateGenerated;
   ContractCanisterOverManagementCreated : record {
     settings : CanisterSettings;
@@ -284,7 +281,7 @@ type DeploymentState = variant {
   UploadContractWasm : record {
     upload_chunk_size : nat64;
     certificate : SignedContractCertificate;
-    uploaded_chunk_hashes : vec vec nat8;
+    uploaded_chunk_hashes : vec blob;
     upload_chunk_count : nat64;
   };
   WaitingReceiveContractCertificate;
@@ -293,7 +290,7 @@ type DeploymentState = variant {
   GenerateContractCertificate;
   InstallContractWasm : record {
     certificate : SignedContractCertificate;
-    uploaded_chunk_hashes : vec vec nat8;
+    uploaded_chunk_hashes : vec blob;
   };
   TransferTopUpFundsToCMC;
   TransferDeployerFundsToTransitAccount;
@@ -485,8 +482,8 @@ type InitializeContractCertificateResponse = variant {
   Err : InitializeContractCertificateError;
 };
 type LedgerAccount = variant {
-  Account : record { owner : principal; subaccount : opt vec nat8 };
-  AccountIdentifier : record { slice : vec nat8 };
+  Account : record { owner : principal; subaccount : opt blob };
+  AccountIdentifier : record { slice : blob };
 };
 type LogVisibility = variant {
   controllers;
@@ -564,7 +561,7 @@ type SetUploadWasmGrantArgs = record { grant : opt UploadWasmGrant };
 type SetUploadWasmGrantError = variant { PermissionDenied; WasmLengthIsTooBig };
 type SetUploadWasmGrantResponse = variant { Ok; Err : SetUploadWasmGrantError };
 type SignedContractCertificate = record {
-  signature : vec nat8;
+  signature : blob;
   contract_certificate : ContractCertificate;
 };
 type SortingDefinition = record {
@@ -585,7 +582,7 @@ type SortingDefinition_3 = record {
 };
 type SortingOrder = variant { Descending; Ascending };
 type Timestamped = record { value : text; timestamp : nat64 };
-type UploadWasmChunkArgs = record { first : bool; chunk : vec nat8 };
+type UploadWasmChunkArgs = record { first : bool; chunk : blob };
 type UploadWasmChunkError = variant {
   GrantNotFound;
   WasmLengthOverflow;

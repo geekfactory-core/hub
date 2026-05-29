@@ -1,15 +1,19 @@
 import {isNullish} from '@dfinity/utils';
+import type {Feature} from 'frontend/src/utils/core/feature/feature';
 import {reusePromiseWrapper} from 'frontend/src/utils/core/promise/reusePromise';
+import type {WithoutUndefined} from 'frontend/src/utils/core/typescript/typescriptAddons';
 import {createContext, useContext, useMemo, type PropsWithChildren} from 'react';
-import {useContractBlockStatus, type ContractBlockDataAvailability, type ContractBlockState} from './useContractBlockStatus';
+import {useContractBlockStatus, type ContractBlockState, type ResponseError} from './useContractBlockStatus';
 
 type Context = {
     deploymentId: bigint;
-    contractBlockDataAvailability: ContractBlockDataAvailability | undefined;
+    contractTemplateId: bigint;
     contractBlockState: ContractBlockState | undefined;
-    feature: ReturnType<typeof useContractBlockStatus>['feature'];
-    fetchCurrentContractBlockStatus: () => Promise<void>;
+    feature: Feature;
+    responseError: ResponseError | undefined;
+    fetchContractBlockStatus: () => Promise<void>;
 };
+type SafeContext = WithoutUndefined<Context>;
 
 const Context = createContext<Context | undefined>(undefined);
 
@@ -29,21 +33,22 @@ export const useContractBlockStatusContextSafe = () => {
     if (isNullish(context.contractBlockState)) {
         throw new Error('useContractBlockStatusContextSafe: contractBlockState is nullish');
     }
-    return context;
+    return context as SafeContext;
 };
 
 type Props = {
     deploymentId: bigint;
+    contractTemplateId: bigint;
 };
 
 export const ContractBlockStatusProvider = (props: PropsWithChildren<Props>) => {
-    const {deploymentId} = props;
-    const {contractBlockDataAvailability, contractBlockState, fetchContractBlockStatus, feature} = useContractBlockStatus();
+    const {deploymentId, contractTemplateId} = props;
+    const {contractBlockState, fetchContractBlockStatus: fetchContractBlockStatusRaw, feature, responseError} = useContractBlockStatus();
 
-    const fetchCurrentContractBlockStatus = useMemo(
+    const fetchContractBlockStatus = useMemo(
         () =>
             reusePromiseWrapper(async () => {
-                await fetchContractBlockStatus({
+                await fetchContractBlockStatusRaw({
                     filter: {
                         ByDeploymentId: {
                             deployment_id: deploymentId
@@ -51,18 +56,19 @@ export const ContractBlockStatusProvider = (props: PropsWithChildren<Props>) => 
                     }
                 });
             }),
-        [deploymentId, fetchContractBlockStatus]
+        [deploymentId, fetchContractBlockStatusRaw]
     );
 
     const value: Context = useMemo(
         () => ({
             deploymentId,
-            contractBlockDataAvailability,
+            contractTemplateId,
             contractBlockState,
             feature,
-            fetchCurrentContractBlockStatus
+            responseError,
+            fetchContractBlockStatus
         }),
-        [deploymentId, contractBlockDataAvailability, contractBlockState, feature, fetchCurrentContractBlockStatus]
+        [deploymentId, contractTemplateId, contractBlockState, feature, responseError, fetchContractBlockStatus]
     );
 
     return <Context.Provider value={value}>{props.children}</Context.Provider>;

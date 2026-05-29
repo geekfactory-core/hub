@@ -65,25 +65,62 @@ export const useValidateContractCertificate = () => {
         if (!loaded) {
             return {type: 'loading'};
         }
-        const mappedValidationState = mapContractValidationState(responseError, result);
-        if (nonNullish(mappedValidationState)) {
+        if (nonNullish(responseError)) {
+            const shouldRetry =
+                hasProperty(responseError, 'CertificateUnavailable') || hasProperty(responseError, 'ContractInfoUnavailable') || hasProperty(responseError, 'ValidateContractUrlUnavailable');
+            if (shouldRetry) {
+                /**
+                 * there was an error while validating the contract certificate on the backend - user should retry
+                 */
+                return {
+                    type: 'available',
+                    validationState: {
+                        type: 'backendErrorWithRetry',
+                        responseError
+                    }
+                };
+            }
+            /**
+             * contract is not valid
+             */
             return {
                 type: 'available',
-                validationState: mappedValidationState
+                validationState: {
+                    type: 'validationFatalError'
+                }
             };
         }
-        if (nonNullish(responseError)) {
-            return {
-                type: 'notAvailable',
-                error: toError()
-            };
-        } else if (feature.error.isError) {
+
+        if (feature.error.isError) {
             /**
              * there was a client side error
              */
             return {
                 type: 'notAvailable',
                 error: toError(feature.error.error)
+            };
+        }
+        if (nonNullish(result)) {
+            const delayToExpirationMillis = fromNullable(result.delay_to_expiration_millis);
+            if (!isNullish(delayToExpirationMillis)) {
+                return {
+                    type: 'available',
+                    validationState: {
+                        type: 'certificateValidAndActive',
+                        delayToExpirationMillis: delayToExpirationMillis,
+                        certificate: result.certificate
+                    }
+                };
+            }
+            /**
+             * If delayToExpirationMillis is nullish, it means the certificate is expired
+             */
+            return {
+                type: 'available',
+                validationState: {
+                    type: 'certificateValidButExpired',
+                    certificate: result.certificate
+                }
             };
         }
         // Illegal state - we should never reach here.
@@ -94,38 +131,4 @@ export const useValidateContractCertificate = () => {
     }, [feature, result, responseError]);
 
     return useMemo<Context>(() => ({contractValidationDataAvailability, validate, feature, result, responseError}), [contractValidationDataAvailability, validate, feature, result, responseError]);
-};
-
-export const mapContractValidationState = (
-    responseError: ResponseError | undefined,
-    result: ValidateContractCertificateResult | undefined
-): ContractValidationState | undefined => {
-    if (nonNullish(responseError)) {
-        const shouldRetry =
-            hasProperty(responseError, 'CertificateUnavailable') || hasProperty(responseError, 'ContractInfoUnavailable') || hasProperty(responseError, 'ValidateContractUrlUnavailable');
-        if (shouldRetry) {
-            return {
-                type: 'backendErrorWithRetry',
-                responseError
-            };
-        }
-        return {
-            type: 'validationFatalError'
-        };
-    }
-
-    if (nonNullish(result)) {
-        const delayToExpirationMillis = fromNullable(result.delay_to_expiration_millis);
-        if (!isNullish(delayToExpirationMillis)) {
-            return {
-                type: 'certificateValidAndActive',
-                delayToExpirationMillis,
-                certificate: result.certificate
-            };
-        }
-        return {
-            type: 'certificateValidButExpired',
-            certificate: result.certificate
-        };
-    }
 };

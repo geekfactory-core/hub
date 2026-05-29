@@ -4,7 +4,7 @@ import {useContractBlockStatusContext} from 'frontend/src/context/contractBlock/
 import {i18} from 'frontend/src/i18';
 
 export const ContractBlockStatusLoadingErrorPage = () => {
-    const {feature, fetchCurrentContractBlockStatus} = useContractBlockStatusContext();
+    const {feature, fetchContractBlockStatus} = useContractBlockStatusContext();
 
-    return <ErrorAlertWithAction message={i18.deployment.stub.error} action={<AlertActionButton onClick={fetchCurrentContractBlockStatus} loading={feature.status.inProgress} />} large />;
+    return <ErrorAlertWithAction message={i18.deployment.stub.error} action={<AlertActionButton onClick={fetchContractBlockStatus} loading={feature.status.inProgress} />} large />;
 };

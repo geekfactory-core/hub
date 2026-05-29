@@ -1,6 +1,7 @@
 import type {Principal} from '@dfinity/principal';
 import {fromNullable, isNullish, nonNullish} from '@dfinity/utils';
 import {useContractBlockStatusContextSafe} from 'frontend/src/context/contractBlock/ContractBlockStatusProvider';
+import type {ContractBlockState} from 'frontend/src/context/contractBlock/useContractBlockStatus';
 import {useContractTemplateContextSafe} from 'frontend/src/context/contractTemplate/ContractTemplateProvider';
 import {useContractActivationState, type ContractActivationDataAvailability} from 'frontend/src/context/contractTemplate/useContractActivationState';
 import {useDeploymentContextSafe} from 'frontend/src/context/deployment/DeploymentProvider';
@@ -18,8 +19,7 @@ type Context = {
     contractActivationStateFeature: Feature;
     contractValidationDataAvailability: ContractValidationDataAvailabilityExt;
     contractValidationStateFeature: Feature;
-    contractBlocked: boolean;
-    contractBlockedReason: string | undefined;
+    contractBlockState: ContractBlockState;
     isItSafeToUseContract: boolean;
     fetchContractActivationState: () => Promise<void>;
     fetchNotAvailableData: () => Promise<void>;
@@ -143,7 +143,6 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
     }, [validateContract]);
 
     const contractBlocked = contractBlockState.type == 'blocked';
-    const contractBlockedReason = contractBlockState.type == 'blocked' ? contractBlockState.reason : undefined;
 
     const isItSafeToUseContract = useMemo(() => {
         if (isNullish(contractDeploymentState)) {
@@ -187,8 +186,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
-            contractBlocked,
-            contractBlockedReason,
+            contractBlockState,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData
@@ -199,8 +197,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
-            contractBlocked,
-            contractBlockedReason,
+            contractBlockState,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData

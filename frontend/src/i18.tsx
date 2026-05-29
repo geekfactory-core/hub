@@ -342,8 +342,7 @@ const rawI18 = {
                 columnTitle: 'Status',
                 deploying: 'Deploying',
                 deployed: 'Deployed',
-                terminated: 'Terminated',
-                blocked: 'Blocked'
+                terminated: 'Terminated'
             }
         }
     },

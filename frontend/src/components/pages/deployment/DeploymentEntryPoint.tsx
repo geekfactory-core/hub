@@ -51,7 +51,7 @@ const Inner = () => {
                 path={PATH_CONTRACT_DEPLOYMENT}
                 element={
                     <InnerRouteContentWrapper childComponentName="Deployment">
-                        <ContractBlockStatusProvider deploymentId={deployment.deployment_id}>
+                        <ContractBlockStatusProvider deploymentId={deployment.deployment_id} contractTemplateId={deployment.contract_template_id}>
                             <ContractBlockStatusPreloader>
                                 <ContractStatusProvider>
                                     <DeploymentPage />
