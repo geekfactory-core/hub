@@ -362,6 +362,14 @@ export const idlFactory = ({ IDL }) => {
   const GetContractBlockStatusResult = IDL.Record({
     'blocked' : IDL.Opt(Timestamped),
   });
+  const GetContractBlockStatusError = IDL.Variant({
+    'DeploymentNotFound' : IDL.Null,
+    'ContractCanisterNotFound' : IDL.Null,
+  });
+  const GetContractBlockStatusResponse = IDL.Variant({
+    'Ok' : GetContractBlockStatusResult,
+    'Err' : GetContractBlockStatusError,
+  });
   const GetContractTemplateArgs = IDL.Record({
     'contract_template_id' : IDL.Nat64,
   });
@@ -742,7 +750,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'get_contract_block_status' : IDL.Func(
         [GetContractBlockStatusArgs],
-        [GetContractBlockStatusResult],
+        [GetContractBlockStatusResponse],
         ['query'],
       ),
     'get_contract_template' : IDL.Func(

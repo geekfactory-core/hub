@@ -358,6 +358,10 @@ export type GetContractActivationCodeResponse = {
   { 'Err' : GetContractActivationCodeError };
 export interface GetContractActivationCodeResult { 'code' : string }
 export interface GetContractBlockStatusArgs { 'filter' : ContractBlockFilter }
+export type GetContractBlockStatusError = { 'DeploymentNotFound' : null } |
+  { 'ContractCanisterNotFound' : null };
+export type GetContractBlockStatusResponse = { 'Ok' : GetContractBlockStatusResult } |
+  { 'Err' : GetContractBlockStatusError };
 export interface GetContractBlockStatusResult { 'blocked' : [] | [Timestamped] }
 export interface GetContractTemplateArgs { 'contract_template_id' : bigint }
 export type GetContractTemplateError = { 'ContractTemplateNotFound' : null };

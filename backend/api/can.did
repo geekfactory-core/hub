@@ -349,6 +349,14 @@ type GetContractActivationCodeResponse = variant {
 };
 type GetContractActivationCodeResult = record { code : text };
 type GetContractBlockStatusArgs = record { filter : ContractBlockFilter };
+type GetContractBlockStatusError = variant {
+  DeploymentNotFound;
+  ContractCanisterNotFound;
+};
+type GetContractBlockStatusResponse = variant {
+  Ok : GetContractBlockStatusResult;
+  Err : GetContractBlockStatusError;
+};
 type GetContractBlockStatusResult = record { blocked : opt Timestamped };
 type GetContractTemplateArgs = record { contract_template_id : nat64 };
 type GetContractTemplateError = variant { ContractTemplateNotFound };
@@ -622,7 +630,7 @@ service : {
       GetContractActivationCodeResponse,
     ) query;
   get_contract_block_status : (GetContractBlockStatusArgs) -> (
-      GetContractBlockStatusResult,
+      GetContractBlockStatusResponse,
     ) query;
   get_contract_template : (GetContractTemplateArgs) -> (
       GetContractTemplateResponse,

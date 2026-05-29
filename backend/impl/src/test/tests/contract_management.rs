@@ -3,6 +3,7 @@ use hub_canister_api::{
     add_contract_template::{AddContractTemplateError, AddContractTemplateResult},
     block_contract_template::BlockContractTemplateError,
     block_contracts::BlockContractsError,
+    get_contract_block_status::GetContractBlockStatusError,
     set_contract_template_retired::SetContractTemplateRetiredError,
     set_upload_wasm_grant::SetUploadWasmGrantError,
     types::{
@@ -280,6 +281,8 @@ async fn test_block_contracts() {
             get_contract_block_status_int(hub_canister_api::get_contract_block_status::ContractBlockFilter::ByContractCanisterId {
                 canister_id: first_contract_canister,
             })
+            .ok()
+            .and_then(|result| result.blocked)
             .map(|blocked| blocked.value),
             Some("policy-1".to_string())
         );
@@ -309,7 +312,7 @@ async fn test_block_contracts() {
             get_contract_block_status_int(hub_canister_api::get_contract_block_status::ContractBlockFilter::ByContractCanisterId {
                 canister_id: unknown_contract_canister,
             }),
-            None
+            Err(GetContractBlockStatusError::ContractCanisterNotFound)
         );
     });
 
@@ -335,6 +338,8 @@ async fn test_block_contracts() {
                     deployment_id: first_deployment.deployment_id,
                 }
             )
+            .ok()
+            .and_then(|result| result.blocked)
             .map(|blocked| blocked.value),
             Some("policy-1".to_string())
         );
