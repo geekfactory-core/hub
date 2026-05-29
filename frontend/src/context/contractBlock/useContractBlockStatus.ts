@@ -4,7 +4,7 @@ import type {Feature} from 'frontend/src/utils/core/feature/feature';
 import {reusePromiseWrapper} from 'frontend/src/utils/core/promise/reusePromise';
 import type {ExtractResponseError} from 'frontend/src/utils/ic/did';
 import {useMemo} from 'react';
-import type {GetContractBlockStatusArgs, GetContractBlockStatusResponse} from 'src/declarations/hub/hub.did';
+import type {GetContractBlockStatusArgs, GetContractBlockStatusResponse, GetContractBlockStatusResult} from 'src/declarations/hub/hub.did';
 import {apiLogger} from '../logger/logger';
 
 export type ContractBlockState =
@@ -20,6 +20,23 @@ export type ContractBlockState =
 type Response = GetContractBlockStatusResponse;
 export type ResponseError = ExtractResponseError<Response>;
 type Parameters = GetContractBlockStatusArgs;
+
+export const mapContractBlockState = (data: GetContractBlockStatusResult | undefined): ContractBlockState | undefined => {
+    if (nonNullish(data)) {
+        const blocked = fromNullable(data.blocked);
+        if (nonNullish(blocked)) {
+            return {
+                type: 'blocked',
+                reason: blocked.value,
+                timestamp: blocked.timestamp
+            };
+        }
+
+        return {
+            type: 'active'
+        };
+    }
+};
 
 type Context = {
     contractBlockState: ContractBlockState | undefined;
@@ -44,27 +61,7 @@ export const useContractBlockStatus = () => {
         [call]
     );
 
-    const contractBlockState = useMemo<ContractBlockState | undefined>(() => {
-        if (nonNullish(data)) {
-            const blocked = fromNullable(data.blocked);
-            if (nonNullish(blocked)) {
-                /**
-                 * the contract is blocked, we have the reason and the timestamp of when it was blocked
-                 */
-                return {
-                    type: 'blocked',
-                    reason: blocked.value,
-                    timestamp: blocked.timestamp
-                };
-            }
-            /**
-             * the contract is not blocked (active)
-             */
-            return {
-                type: 'active'
-            };
-        }
-    }, [data]);
+    const contractBlockState = useMemo<ContractBlockState | undefined>(() => mapContractBlockState(data), [data]);
 
     return useMemo<Context>(() => ({contractBlockState, fetchContractBlockStatus, feature, responseError}), [contractBlockState, fetchContractBlockStatus, feature, responseError]);
 };

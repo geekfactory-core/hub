@@ -1,25 +1,22 @@
-import {fromNullable} from '@dfinity/utils';
-import type {GetContractBlockStatusResult} from 'src/declarations/hub/hub.did';
 import {describe, expect, it} from 'vitest';
+import {mapContractBlockState} from './useContractBlockStatus';
 
-const mapBlockedState = (result: GetContractBlockStatusResult) => {
-    const blocked = fromNullable(result.blocked);
-    if (blocked) {
-        return {type: 'blocked', reason: blocked.value, timestamp: blocked.timestamp};
-    }
-    return {type: 'active'};
-};
-
-describe('useContractBlockStatus mapping', () => {
-    it('maps blocked result into a blocked contract state', () => {
-        expect(mapBlockedState({blocked: [{value: 'policy', timestamp: BigInt(10)}]})).toEqual({
-            type: 'blocked',
-            reason: 'policy',
-            timestamp: BigInt(10)
+describe('useContractBlockStatus', () => {
+    describe('contractBlockState mapping', () => {
+        it('returns blocked state when blocked metadata exists', () => {
+            expect(mapContractBlockState({blocked: [{value: 'policy', timestamp: BigInt(10)}]})).toEqual({
+                type: 'blocked',
+                reason: 'policy',
+                timestamp: BigInt(10)
+            });
         });
-    });
 
-    it('maps empty result into an active contract state', () => {
-        expect(mapBlockedState({blocked: []})).toEqual({type: 'active'});
+        it('returns active state when blocked metadata is empty', () => {
+            expect(mapContractBlockState({blocked: []})).toEqual({type: 'active'});
+        });
+
+        it('returns undefined when data is undefined', () => {
+            expect(mapContractBlockState(undefined)).toBeUndefined();
+        });
     });
 });
