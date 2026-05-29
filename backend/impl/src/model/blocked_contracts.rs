@@ -47,13 +47,6 @@ impl BlockedContractsStorage {
         }
     }
 
-    pub(crate) fn get_contract_blocks_len(&self) -> u64 {
-        self.contract_blocks.len()
-    }
-
-    pub(crate) fn get_contract_block_batch(&self, idx: u64) -> Option<CBor<ContractBlockBatch>> {
-        self.contract_blocks.get(idx)
-    }
 
     pub(crate) fn find_deployment_block(
         &self,

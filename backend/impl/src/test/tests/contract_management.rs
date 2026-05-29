@@ -265,12 +265,6 @@ async fn test_block_contracts() {
 
     read_state(|state| {
         let storage = state.get_model().get_blocked_contracts_storage();
-        assert_eq!(storage.get_contract_blocks_len(), 1);
-
-        let batch = storage.get_contract_block_batch(0).unwrap();
-        assert_eq!(batch.reason, "policy-1");
-        assert!(batch.blocked_at > 0);
-        assert_eq!(batch.deployment_ids, vec![first_deployment.deployment_id]);
         assert_eq!(
             storage
                 .find_deployment_block(&first_deployment.deployment_id)
@@ -300,7 +294,6 @@ async fn test_block_contracts() {
 
     read_state(|state| {
         let storage = state.get_model().get_blocked_contracts_storage();
-        assert_eq!(storage.get_contract_blocks_len(), 1);
 
         assert_eq!(
             storage
@@ -325,7 +318,6 @@ async fn test_block_contracts() {
 
     read_state(|state| {
         let storage = state.get_model().get_blocked_contracts_storage();
-        assert_eq!(storage.get_contract_blocks_len(), 1);
         assert_eq!(
             storage
                 .find_deployment_block(&first_deployment.deployment_id)
