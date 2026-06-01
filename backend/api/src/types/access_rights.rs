@@ -6,6 +6,7 @@ pub enum Permission {
     SetAccessRights,
     SetConfig,
     AddContractTemplate,
+    BlockContract,
     BlockContractTemplate,
     RetireContractTemplate,
 }

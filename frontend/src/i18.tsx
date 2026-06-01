@@ -217,7 +217,8 @@ const rawI18 = {
                 title: 'Contract',
                 deploying: 'Deploying',
                 deployed: 'Deployed',
-                terminated: 'Terminated'
+                terminated: 'Terminated',
+                blocked: 'Blocked'
             },
             activationState: {
                 title: 'Activation',
@@ -238,7 +239,8 @@ const rawI18 = {
                 },
                 contractState: {
                     deploying: 'This contract is being deployed.',
-                    terminated: 'This contract was terminated by the owner and is no longer available.'
+                    terminated: 'This contract was terminated by the owner and is no longer available.',
+                    blocked: (reason: string) => `This contract can no longer be trusted for secure operations because it was blocked: ${reason}`
                 },
                 activationState: {
                     activationRequired: 'This contract has not been activated.',

@@ -8,18 +8,18 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 
 [workspace.dependencies]
-common_canister_types = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-referral_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_contract_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_canister_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_canister_impl = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_contract_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_certification = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
-common_embed_assets = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.1" }
+common_canister_types = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+referral_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_contract_c2c_client = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_canister_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_canister_impl = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_contract_api = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_certification = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
+common_embed_assets = { git = "https://github.com/geekfactory-core/common.git", tag = "0.0.4" }
 candid = "0.10.20"
 serde = "1.0.228"
 serde_cbor = "0.11.2"

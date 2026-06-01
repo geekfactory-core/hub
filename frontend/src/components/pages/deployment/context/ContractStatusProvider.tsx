@@ -1,5 +1,7 @@
 import type {Principal} from '@dfinity/principal';
 import {fromNullable, isNullish, nonNullish} from '@dfinity/utils';
+import {useContractBlockStatusContextSafe} from 'frontend/src/context/contractBlock/ContractBlockStatusProvider';
+import type {ContractBlockState} from 'frontend/src/context/contractBlock/useContractBlockStatus';
 import {useContractTemplateContextSafe} from 'frontend/src/context/contractTemplate/ContractTemplateProvider';
 import {useContractActivationState, type ContractActivationDataAvailability} from 'frontend/src/context/contractTemplate/useContractActivationState';
 import {useDeploymentContextSafe} from 'frontend/src/context/deployment/DeploymentProvider';
@@ -17,6 +19,7 @@ type Context = {
     contractActivationStateFeature: Feature;
     contractValidationDataAvailability: ContractValidationDataAvailabilityExt;
     contractValidationStateFeature: Feature;
+    contractBlockState: ContractBlockState;
     isItSafeToUseContract: boolean;
     fetchContractActivationState: () => Promise<void>;
     fetchNotAvailableData: () => Promise<void>;
@@ -39,6 +42,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         }
     } = useContractTemplateContextSafe();
     const {deployment} = useDeploymentContextSafe();
+    const {contractBlockState} = useContractBlockStatusContextSafe();
     const contractCanister = useMemo<Principal | undefined>(() => fromNullable(deployment.contract_canister), [deployment.contract_canister]);
     const contractCanisterId = useMemo<string | undefined>(() => contractCanister?.toText(), [contractCanister]);
 
@@ -138,6 +142,8 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         validateContract();
     }, [validateContract]);
 
+    const contractBlocked = contractBlockState.type == 'blocked';
+
     const isItSafeToUseContract = useMemo(() => {
         if (isNullish(contractDeploymentState)) {
             // Illegal state - we should never reach here.
@@ -148,12 +154,12 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
         const contractActivated = contractActivationDataAvailability.type == 'available' && contractActivationDataAvailability.activationState.type == 'activated';
         const certificateValidAndActive = contractValidationDataAvailability.type == 'available' && contractValidationDataAvailability.validationState.type == 'certificateValidAndActive';
 
-        if (contractDeployed && (contractActivationNotRequired || contractActivated) && certificateValidAndActive) {
+        if (contractDeployed && !contractBlocked && (contractActivationNotRequired || contractActivated) && certificateValidAndActive) {
             return true;
         }
 
         return false;
-    }, [contractDeploymentState, contractActivationDataAvailability, contractValidationDataAvailability]);
+    }, [contractDeploymentState, contractBlocked, contractActivationDataAvailability, contractValidationDataAvailability]);
 
     /**
     ==========================================
@@ -180,6 +186,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
+            contractBlockState,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData
@@ -190,6 +197,7 @@ export const ContractStatusProvider = (props: PropsWithChildren) => {
             contractActivationStateFeature,
             contractValidationDataAvailability,
             contractValidationStateFeature,
+            contractBlockState,
             isItSafeToUseContract,
             fetchContractActivationState,
             fetchNotAvailableData

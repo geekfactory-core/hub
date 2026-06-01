@@ -1,4 +1,5 @@
 import {isNullish} from '@dfinity/utils';
+import {ContractBlockStatusProvider} from 'frontend/src/context/contractBlock/ContractBlockStatusProvider';
 import {DeploymentProcessor} from 'frontend/src/context/deployment/DeploymentProcessor';
 import {DeploymentProvider, useDeploymentContextSafe} from 'frontend/src/context/deployment/DeploymentProvider';
 import {DeploymentStateProvider} from 'frontend/src/context/deployment/DeploymentStateProvider';
@@ -11,6 +12,7 @@ import {InnerRouteContentWrapper} from '../skeleton/SkeletonContentEntryPoint';
 import {ContractStatusProvider} from './context/ContractStatusProvider';
 import {DeploymentEventsPage} from './deploymentEvents/DeploymentEventsPage';
 import {DeploymentPage} from './DeploymentPage';
+import {ContractBlockStatusPreloader} from './preloader/ContractBlockStatusPreloader';
 import {DeploymentPreloader} from './preloader/DeploymentPreloader';
 
 export const DeploymentEntryPoint = () => {
@@ -49,9 +51,13 @@ const Inner = () => {
                 path={PATH_CONTRACT_DEPLOYMENT}
                 element={
                     <InnerRouteContentWrapper childComponentName="Deployment">
-                        <ContractStatusProvider>
-                            <DeploymentPage />
-                        </ContractStatusProvider>
+                        <ContractBlockStatusProvider deploymentId={deployment.deployment_id} contractTemplateId={deployment.contract_template_id}>
+                            <ContractBlockStatusPreloader>
+                                <ContractStatusProvider>
+                                    <DeploymentPage />
+                                </ContractStatusProvider>
+                            </ContractBlockStatusPreloader>
+                        </ContractBlockStatusProvider>
                     </InnerRouteContentWrapper>
                 }
             />

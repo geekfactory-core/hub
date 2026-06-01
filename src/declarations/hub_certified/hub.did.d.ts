@@ -31,6 +31,14 @@ export type BlockContractTemplateError = { 'ContractTemplateNotFound' : null } |
   { 'ContractTemplateAlreadyBlocked' : null };
 export type BlockContractTemplateResponse = { 'Ok' : null } |
   { 'Err' : BlockContractTemplateError };
+export interface BlockContractsArgs {
+  'deployment_ids' : BigUint64Array | bigint[],
+  'contract_canister_ids' : Array<Principal>,
+  'reason' : string,
+}
+export type BlockContractsError = { 'PermissionDenied' : null };
+export type BlockContractsResponse = { 'Ok' : null } |
+  { 'Err' : BlockContractsError };
 export interface CancelDeploymentArgs {
   'deployment_id' : bigint,
   'reason' : string,
@@ -95,6 +103,10 @@ export interface Config {
   'regex_for_contract_principal_parsing' : Array<string>,
   'max_deployment_events_per_chunk' : bigint,
 }
+export type ContractBlockFilter = {
+    'ByDeploymentId' : GetContractActivationCodeArgs
+  } |
+  { 'ByContractCanisterId' : { 'canister_id' : Principal } };
 export interface ContractCertificate {
   'deployer' : Principal,
   'contract_canister' : Principal,
@@ -322,9 +334,8 @@ export type FinalizeDeploymentState = { 'Finalized' : null } |
   { 'StartDeploymentFinalization' : null };
 export type GetAccessRightsResponse = { 'Ok' : GetAccessRightsResult };
 export interface GetAccessRightsResult { 'access_rights' : Array<AccessRight> }
-export type GetCanisterMetricsError = { 'PermissionDenied' : null };
 export type GetCanisterMetricsResponse = { 'Ok' : GetCanisterMetricsResult } |
-  { 'Err' : GetCanisterMetricsError };
+  { 'Err' : BlockContractsError };
 export interface GetCanisterMetricsResult { 'metrics' : CanisterMetrics }
 export type GetCanisterStatusError = {
     'ManagementCallError' : { 'reason' : string }
@@ -347,6 +358,14 @@ export type GetContractActivationCodeResponse = {
   } |
   { 'Err' : GetContractActivationCodeError };
 export interface GetContractActivationCodeResult { 'code' : string }
+export interface GetContractBlockStatusArgs { 'filter' : ContractBlockFilter }
+export type GetContractBlockStatusError = { 'DeploymentNotFound' : null } |
+  { 'ContractCanisterNotFound' : null };
+export type GetContractBlockStatusResponse = {
+    'Ok' : GetContractBlockStatusResult
+  } |
+  { 'Err' : GetContractBlockStatusError };
+export interface GetContractBlockStatusResult { 'blocked' : [] | [Timestamped] }
 export interface GetContractTemplateArgs { 'contract_template_id' : bigint }
 export type GetContractTemplateError = { 'ContractTemplateNotFound' : null };
 export type GetContractTemplateResponse = { 'Ok' : GetContractTemplateResult } |
@@ -433,7 +452,8 @@ export type HubEventType = {
   { 'ConfigSet' : GetConfigResult } |
   { 'ContractTemplateBlocked' : GetContractTemplateArgs } |
   { 'AccessRightsSet' : GetAccessRightsResult } |
-  { 'ContractTemplateAdded' : GetContractTemplateArgs };
+  { 'ContractTemplateAdded' : GetContractTemplateArgs } |
+  { 'ContractBlocked' : { 'deployment_ids_count' : bigint } };
 export type HubEventsSortingKey = { 'EventId' : null };
 export type IcpConversationRate = {
     'CMC' : { 'xdr_permyriad_per_icp' : bigint, 'timestamp_seconds' : bigint }
@@ -493,6 +513,7 @@ export interface ObtainContractCertificateResult {
   'certificate' : SignedContractCertificate,
 }
 export type Permission = { 'AddContractTemplate' : null } |
+  { 'BlockContract' : null } |
   { 'RetireContractTemplate' : null } |
   { 'BlockContractTemplate' : null } |
   { 'SetAccessRights' : null } |
@@ -600,6 +621,7 @@ export interface _SERVICE {
     [BlockContractTemplateArgs],
     BlockContractTemplateResponse
   >,
+  'block_contracts' : ActorMethod<[BlockContractsArgs], BlockContractsResponse>,
   'cancel_deployment' : ActorMethod<
     [CancelDeploymentArgs],
     CancelDeploymentResponse
@@ -612,6 +634,10 @@ export interface _SERVICE {
   'get_contract_activation_code' : ActorMethod<
     [GetContractActivationCodeArgs],
     GetContractActivationCodeResponse
+  >,
+  'get_contract_block_status' : ActorMethod<
+    [GetContractBlockStatusArgs],
+    GetContractBlockStatusResponse
   >,
   'get_contract_template' : ActorMethod<
     [GetContractTemplateArgs],

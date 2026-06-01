@@ -39,25 +39,24 @@ const TemplateStateStep = () => {
 
 const ContractStateStep = () => {
     const {isOwnedByCurrentUser} = useDeploymentContextSafe();
-    const {contractDeploymentState} = useContractStatusContext();
+    const {contractDeploymentState, contractBlockState} = useContractStatusContext();
     const {shouldProcessManually} = useDeploymentProcessorContext();
+
+    const contractBlocked = contractBlockState.type == 'blocked';
 
     const {icon, status, color} = useMemo<StatusProto>(() => {
         const type = contractDeploymentState?.type;
         switch (type) {
             case 'deploying': {
                 if (isOwnedByCurrentUser && shouldProcessManually) {
-                    const icon: IconType = 'error';
-                    const status: string = i18.deployment.contractStatus.common.error;
-                    const color: Color = 'red';
-                    return {icon, status, color};
+                    return {icon: 'error', status: i18.deployment.contractStatus.common.error, color: 'red'};
                 }
-                const icon: IconType = 'loading';
-                const status: string = i18.deployment.contractStatus.contractState.deploying;
-                const color: Color = 'gray';
-                return {icon, status, color};
+                return {icon: 'loading', status: i18.deployment.contractStatus.contractState.deploying, color: 'gray'};
             }
             case 'success': {
+                if (contractBlocked) {
+                    return {icon: 'exclamation', status: i18.deployment.contractStatus.contractState.blocked, color: 'red'};
+                }
                 return {icon: 'success', status: i18.deployment.contractStatus.contractState.deployed, color: 'green'};
             }
             case 'terminated': {
@@ -74,7 +73,7 @@ const ContractStateStep = () => {
                 return invalidStateStatusProto;
             }
         }
-    }, [contractDeploymentState?.type, shouldProcessManually, isOwnedByCurrentUser]);
+    }, [contractBlocked, contractDeploymentState?.type, isOwnedByCurrentUser, shouldProcessManually]);
 
     return <StepCard icon={icon} title={i18.deployment.contractStatus.contractState.title} status={status} color={color} />;
 };

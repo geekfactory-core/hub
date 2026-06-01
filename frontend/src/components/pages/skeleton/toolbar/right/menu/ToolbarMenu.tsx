@@ -4,6 +4,7 @@ import {Dropdown, Flex, Modal, Switch} from 'antd';
 import type {SwitchClickEventHandler} from 'antd/es/switch';
 import {sendOpenConnectModalNotification} from 'frontend/src/components/pages/auth/ConnectModalRenderer';
 import {DefaultButton} from 'frontend/src/components/widgets/button/DefaultButton';
+import {DropdownTrigger} from 'frontend/src/components/widgets/DropdownTrigger';
 import {ExternalLink} from 'frontend/src/components/widgets/ExternalLink';
 import {useAuthContext} from 'frontend/src/context/auth/AuthProvider';
 import {useMediaTheme} from 'frontend/src/context/mediaTheme/MediaThemeProvider';
@@ -145,7 +146,9 @@ export const ToolbarMenu = () => {
     return (
         <>
             <Dropdown menu={{items, style: {minWidth: '200px'}, onClick: handleMenuClick}} placement="bottomRight" trigger={['click']} open={open} onOpenChange={handleOpenChange}>
-                <DefaultButton icon={<MenuOutlined />} />
+                <DropdownTrigger>
+                    <DefaultButton icon={<MenuOutlined />} />
+                </DropdownTrigger>
             </Dropdown>
             {disconnectModalContextHolder}
         </>

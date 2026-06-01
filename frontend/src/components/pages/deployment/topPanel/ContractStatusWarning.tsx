@@ -18,6 +18,7 @@ export const ContractStatusWarning = () => {
             <SuccessComponent />
             <ContractTemplateWarning />
             <ContractDeploymentWarning />
+            <ContractBlockWarning />
             <ContractActivationWarning />
             <ContractValidationWarning />
         </Flex>
@@ -72,6 +73,17 @@ const ContractDeploymentWarning = () => {
             return null;
         }
     }
+};
+
+const ContractBlockWarning = () => {
+    const {contractDeploymentState, contractBlockState} = useContractStatusContext();
+    if (isNullish(contractDeploymentState) || contractDeploymentState.type != 'success') {
+        return null;
+    }
+    if (contractBlockState.type == 'blocked') {
+        return <ErrorAlert message={i18.deployment.contractStatus.warning.contractState.blocked(contractBlockState.reason)} className="gf-all-caps" />;
+    }
+    return null;
 };
 
 const ContractActivationWarning = () => {

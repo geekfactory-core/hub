@@ -1,5 +1,6 @@
 use crate::model::deployments::DeploymentsStorage;
 use access_rights::AccessRightsStorage;
+use blocked_contracts::BlockedContractsStorage;
 use config::ConfigStorage;
 use hub_events::HubEventsStorage;
 use ic_canister_sig_creation::signature_map::SignatureMap;
@@ -9,6 +10,7 @@ use templates::ContractTemplatesStorage;
 use wasm::WasmStorage;
 
 pub mod access_rights;
+pub mod blocked_contracts;
 pub mod config;
 pub mod deployments;
 pub mod hub_events;
@@ -21,6 +23,7 @@ pub struct DataModel {
     config_storage: ConfigStorage,
     access_rights_storage: AccessRightsStorage,
     contract_templates_storage: ContractTemplatesStorage,
+    blocked_contracts_storage: BlockedContractsStorage,
     deployments_storage: DeploymentsStorage,
     hub_events_storage: HubEventsStorage,
     wasm_storage: WasmStorage,
@@ -48,6 +51,9 @@ impl DataModel {
         let hub_events_index_mem = mm.get(MemoryId::new(10));
         let hub_events_data_mem = mm.get(MemoryId::new(11));
 
+        let blocked_contracts_index_mem = mm.get(MemoryId::new(12));
+        let blocked_contracts_data_mem = mm.get(MemoryId::new(13));
+
         Self {
             config_storage: ConfigStorage::init(config_mem),
             access_rights_storage: AccessRightsStorage::init(access_rights_mem),
@@ -66,6 +72,10 @@ impl DataModel {
                 deployments_event_index_mem,
             ),
             hub_events_storage: HubEventsStorage::init(hub_events_index_mem, hub_events_data_mem),
+            blocked_contracts_storage: BlockedContractsStorage::init(
+                blocked_contracts_index_mem,
+                blocked_contracts_data_mem,
+            ),
             wasm_storage: WasmStorage::default(),
             deployments_signature_map: SignatureMap::default(),
         }
@@ -109,6 +119,14 @@ impl DataModel {
 
     pub(crate) fn get_deployments_storage_mut(&mut self) -> &mut DeploymentsStorage {
         &mut self.deployments_storage
+    }
+
+    pub(crate) fn get_blocked_contracts_storage(&self) -> &BlockedContractsStorage {
+        &self.blocked_contracts_storage
+    }
+
+    pub(crate) fn get_blocked_contracts_storage_mut(&mut self) -> &mut BlockedContractsStorage {
+        &mut self.blocked_contracts_storage
     }
 
     pub(crate) fn get_deployments_signature_map(&self) -> &SignatureMap {

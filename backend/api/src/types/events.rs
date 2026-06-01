@@ -19,6 +19,9 @@ pub enum HubEventType {
     ContractTemplateBlocked {
         contract_template_id: ContractTemplateId,
     },
+    ContractBlocked {
+        deployment_ids_count: u64,
+    },
     ContractTemplateRetired {
         contract_template_id: ContractTemplateId,
         retired: bool,
