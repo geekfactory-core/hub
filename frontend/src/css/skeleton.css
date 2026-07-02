@@ -52,18 +52,9 @@ Main Stack
     height: 100%;
     display: flex;
     flex-direction: column;
+    row-gap: var(--gf-skeleton-content-padding-vertical);
     margin: 0 auto;
-    padding: 0 var(--gf-skeleton-content-padding-horizontal);
-}
-
-/**
-==========================================
-Toolbar
-==========================================
-*/
-
-.skToolbarRow {
-    padding: var(--gf-skeleton-content-padding-vertical) 0;
+    padding: var(--gf-skeleton-content-padding-vertical) var(--gf-skeleton-content-padding-horizontal);
 }
 
 /**
@@ -74,6 +65,9 @@ Content
 
 .skContentRow {
     flex-grow: 1;
+}
+
+.skStack > .skToolbarRow + .skContentRow {
     padding-top: var(--gf-skeleton-content-padding-vertical);
 }
 
@@ -85,5 +79,4 @@ Footer
 
 .skFooterRow {
     text-align: center;
-    padding: var(--gf-skeleton-content-padding-vertical) 0;
 }

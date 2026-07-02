@@ -55,6 +55,11 @@ const rawI18 = {
             faq: 'FAQ'
         }
     },
+    banner: {
+        title: 'New Deployments Paused',
+        description:
+            'New Internet Identity Sale Contract deployments are temporarily paused until DFINITY finalizes MCP integration for Internet Identity. A compatible version of the sale contract will be released once the integration is finalized. Already deployed contracts are not affected and will continue to work normally.'
+    },
     breadcrumb: {
         contractTemplates: 'Templates',
         contractTemplate: 'Template',

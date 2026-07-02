@@ -12,6 +12,7 @@ import {MediaThemeProvider} from '../context/mediaTheme/MediaThemeProvider';
 import {useThemeTypeController} from '../context/mediaTheme/useMediaThemeTypeController';
 import {useRedirectFromRaw} from '../hook/useRedirectFromRaw';
 import {IS_DEV_ENVIRONMENT} from '../utils/env';
+import {AppBanner} from './AppBanner';
 import {AppBreadcrumb} from './AppBreadcrumb';
 import {ConnectModalRenderer} from './pages/auth/ConnectModalRenderer';
 import {SkeletonContentEntryPoint} from './pages/skeleton/SkeletonContentEntryPoint';
@@ -87,6 +88,7 @@ const AppRootLayout = () => {
                     <SkeletonToolbarEntryPoint />
                 </ErrorBoundaryComponent>
             </div>
+            <AppBanner />
             <AppBreadcrumb />
             <div className="skContentRow">
                 <ErrorBoundaryComponent childComponentName="Content">

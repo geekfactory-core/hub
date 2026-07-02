@@ -677,7 +677,7 @@ dependencies = [
 
 [[package]]
 name = "hub_assets_backend"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "candid",
  "common_canister_api",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "hub_canister_api"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "candid",
  "common_canister_types",
@@ -703,7 +703,7 @@ dependencies = [
 
 [[package]]
 name = "hub_canister_candid"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "candid",
  "common_canister_api",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "hub_canister_impl"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-trait",
  "candid",
